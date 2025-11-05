@@ -1,0 +1,52 @@
+.appHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #202c33;
+  color: white;
+  padding: 10px 20px;
+  position: relative;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #25d366;
+}
+
+.searchInput {
+  flex: 1;
+  margin: 0 20px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+}
+
+.menuIcon {
+  font-size: 1.8rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 60px;
+  right: 20px;
+  background-color: #2a3942;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.menuItem {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.menuItem:hover {
+  background-color: #3b4a54;
+}

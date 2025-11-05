@@ -1,0 +1,109 @@
+.editorContainer {
+  max-width: 900px;
+  margin: 40px auto;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+  padding: 20px 30px;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.toolbar button {
+  background: #f4f4f4;
+  border: none;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar button:hover {
+  background: #007bff;
+  color: #fff;
+}
+
+.toolbar .delete {
+  background: #e63946;
+  color: white;
+}
+
+.toolbar .delete:hover {
+  background: #c6282d;
+}
+
+/* Image */
+.postImage {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+
+/* Head input */
+.titleInput {
+  width: 100%;
+  padding: 14px;
+  font-size: 20px;
+  font-weight: 600;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  outline: none;
+}
+
+.titleInput:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* Editor area */
+.editorArea {
+  min-height: 400px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 15px;
+  line-height: 1.7;
+  font-size: 16px;
+  outline: none;
+  color: #222;
+  direction: ltr;       /* Force left-to-right text */
+  text-align: left;     /* Align left */
+  white-space: pre-wrap; /* preserve spaces and line breaks */
+}
+
+.editorArea:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .editorContainer {
+    padding: 15px;
+  }
+
+  .toolbar {
+    justify-content: center;
+  }
+
+  .titleInput {
+    font-size: 18px;
+  }
+
+  .editorArea {
+    font-size: 15px;
+  }
+}

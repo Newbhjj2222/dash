@@ -1,0 +1,24 @@
+.footerNav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: #202c33;
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 0;
+  box-shadow: 0 -2px 6px rgba(0,0,0,0.3);
+  z-index: 100;
+}
+
+.navButton {
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.navButton:hover {
+  transform: scale(1.2);
+}

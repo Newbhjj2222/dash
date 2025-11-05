@@ -1,0 +1,29 @@
+.sidebar {
+  width: 220px;
+  background: #111b21;
+  color: #fff;
+  height: 100vh;
+  padding: 20px;
+}
+
+.title {
+  font-size: 1.3rem;
+  margin-bottom: 15px;
+  color: #25d366;
+}
+
+.menu {
+  list-style: none;
+  padding: 0;
+}
+
+.menu li {
+  margin: 10px 0;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.menu li:hover {
+  color: #25d366;
+  transform: translateX(5px);
+}

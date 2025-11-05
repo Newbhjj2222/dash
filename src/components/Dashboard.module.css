@@ -1,0 +1,152 @@
+/* Dashboard wrapper */
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+  background-color: #f9f9f9;
+}
+
+/* Header wrapper (fixed top) */
+.headerWrapper {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Layout wrapper */
+.mainLayout {
+  display: flex;
+  margin-top: 70px; /* space for header */
+  min-height: calc(100vh - 70px);
+}
+
+/* Sidebar */
+.sidebarWrapper {
+  width: 220px;
+  background-color: #fff;
+  border-right: 1px solid #ddd;
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .sidebarWrapper {
+    width: 100%;
+    order: 1; /* sidebar comes after header */
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+  }
+}
+
+/* Main content */
+.mainContent {
+  flex: 1;
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+/* Stats cards container */
+.statsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 20px;
+}
+
+/* Stats card */
+.statsCard {
+  flex: 1 1 150px;
+  background-color: #fff;
+  border-radius: 10px;
+  padding: 15px 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+/* Posts list */
+.postsList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Individual post card */
+.postCard {
+  background-color: #fff;
+  padding: 15px 20px;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+/* Post title */
+.postTitle {
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+/* Post story */
+.postStory {
+  margin: 0 0 10px;
+  color: #555;
+}
+
+/* Post stats (views/comments) */
+.postStats {
+  display: flex;
+  gap: 15px;
+  font-size: 0.9rem;
+  color: #777;
+  margin-bottom: 10px;
+}
+
+/* Post actions (edit/delete) */
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.editBtn {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: #25d366;
+  color: white;
+}
+
+.deleteBtn {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: #ff4d4f;
+  color: white;
+}
+
+/* Comments section */
+.comments {
+  border-top: 1px solid #eee;
+  padding-top: 10px;
+}
+
+.commentText {
+  margin: 5px 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* Footer wrapper */
+.footerWrapper {
+  margin-top: auto;
+  background-color: #fff;
+  padding: 15px 20px;
+  border-top: 1px solid #ddd;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #555;
+}
