@@ -13,7 +13,7 @@ import Head from "next/head";
 import * as cookie from "cookie";
 import styles from "@/styles/index.module.css";
 import { useRouter } from "next/router";
-
+import Net from "../components/Net";
 const stripHTML = (html) => (html ? html.replace(/<[^>]*>/g, "") : "");
 
 export default function Home({ initialPosts, totalPosts, totalViews, totalComments }) {
@@ -48,7 +48,7 @@ export default function Home({ initialPosts, totalPosts, totalViews, totalCommen
   return (
     <>
       <Head>
-        <title>Posts Dashboard</title>
+        <title>Author Dashboard</title>
         <link
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
@@ -56,6 +56,7 @@ export default function Home({ initialPosts, totalPosts, totalViews, totalCommen
       </Head>
 
       <div className={styles.container}>
+            <Net />
         {/* Dashboard cards */}
         <div className={styles.cards}>
           <div className={styles.card}>
