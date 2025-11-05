@@ -1,3 +1,4 @@
+/* Header container */
 .appHeader {
   display: flex;
   align-items: center;
@@ -6,30 +7,30 @@
   color: white;
   padding: 10px 20px;
   position: relative;
+  width: 100%; /* Full width screen */
+  box-sizing: border-box;
 }
 
+/* Logo */
 .logo {
   font-size: 1.5rem;
   font-weight: bold;
   color: #25d366;
 }
 
+/* Search input (hidden for all screens) */
 .searchInput {
-  flex: 1;
-  margin: 0 20px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: none;
-  outline: none;
-  font-size: 1rem;
+  display: none;
 }
 
+/* Menu icon */
 .menuIcon {
   font-size: 1.8rem;
   cursor: pointer;
   user-select: none;
 }
 
+/* Dropdown menu */
 .dropdownMenu {
   position: absolute;
   top: 60px;
@@ -39,8 +40,10 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   z-index: 1000;
+  min-width: 150px;
 }
 
+/* Dropdown items */
 .menuItem {
   padding: 12px 16px;
   cursor: pointer;
@@ -49,4 +52,40 @@
 
 .menuItem:hover {
   background-color: #3b4a54;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .appHeader {
+    padding: 8px 12px;
+  }
+
+  .logo {
+    font-size: 1.3rem;
+  }
+
+  .menuIcon {
+    font-size: 1.5rem;
+  }
+
+  .dropdownMenu {
+    right: 10px;
+    top: 50px;
+    min-width: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .appHeader {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-size: 1.2rem;
+  }
+
+  .menuIcon {
+    font-size: 1.3rem;
+  }
 }
