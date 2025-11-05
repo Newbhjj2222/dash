@@ -27,7 +27,7 @@ const Net = () => {
             <Link href="/">Home</Link>
           </li>
           <li>
-            <Link href="/create">Create</Link>
+            <Link href="/create">Publish Stories</Link>
           </li>
           <li>
             <Link href="/balance">Balance</Link>
