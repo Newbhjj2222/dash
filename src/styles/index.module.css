@@ -109,10 +109,23 @@
   margin-bottom: 10px;
 }
 
+/* Styles ya container y'amakategory */
 .postCategories {
-  font-style: italic;
-  color: #555555;
+  display: flex;          /* gushyira tags kumurongo */
+  flex-wrap: wrap;        /* zishobora kwiyongera ku murongo ukurikiyeho */
+  gap: 5px;               /* intera hagati ya tags */
   margin-top: 5px;
+}
+
+/* Styles ya tag imwe */
+.postCategories span {
+  background-color: #e0e0e0; /* ibara ry'inyuma rya tag */
+  color: #333333;           /* ibara ry'inyuguti */
+  padding: 3px 10px;        /* intera imbere muri tag */
+  border-radius: 12px;      /* igororotse mu mpande */
+  font-size: 14px;
+  font-style: normal;       /* shyira kuri normal niba ushaka ntibe italic */
+  cursor: default;          /* ntabwo ishobora gukandwa, ushobora guhindura niba ushaka clickable */
 }
 
 /* ---------------------- */
@@ -169,12 +182,26 @@
 }
 
 /* Toggle Comments */
+/* styles.module.css cyangwa aho ufite CSS yawe */
 .toggleBtn {
-  background: #f3f4f6;
-  color: #222;
+  background-color: #4CAF50; /* ibara rya button */
+  color: white; /* ibara ry'inyuguti */
+  padding: 10px 20px; /* intera imbere muri button */
+  border: none; /* kuraho border y'umwimerere */
+  border-radius: 8px; /* gutunganya imipaka ya button ibe igororotse */
+  font-size: 16px; /* ubunini bw'inyuguti */
+  cursor: pointer; /* igaragaza ko ishobora gukandwa */
+  transition: background-color 0.3s ease, transform 0.2s ease; /* animation yoroshye */
 }
+
 .toggleBtn:hover {
-  background: #dbe3ec;
+  background-color: #45a049; /* guhindura ibara igihe uri hejuru ya button */
+  transform: scale(1.05); /* gukomeza gato button igihe uri hejuru */
+}
+
+.toggleBtn:focus {
+  outline: none; /* gukuraho outline igihe button ifite focus */
+  box-shadow: 0 0 0 3px rgba(72, 239, 128, 0.5); /* halo itanga focus effect */
 }
 
 /* ---------------------- */
@@ -185,6 +212,7 @@
   border-top: 1px solid #eee;
   padding-top: 14px;
   background: #f9fafb;
+  color: black;
   border-radius: 10px;
   padding: 15px;
 }
