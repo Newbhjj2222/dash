@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { app } from "@/components/firebase";
 import styles from "@/styles/create.module.css";
+import Net from "../components/Net";
 
 export default function CreateStoryPage() {
   const db = getFirestore(app);
@@ -136,18 +137,19 @@ export default function CreateStoryPage() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>NewTalentsG — Story Creator</h1>
+    <Net />
+      <h1 className={styles.title}>NetStory Uploader</h1>
       <p className={styles.username}>
         Logged in as <strong>{username}</strong>
       </p>
 
       {step === 1 && (
         <form onSubmit={handleStep1} className={styles.form}>
-          <h2 className={styles.stepTitle}>Step 1 — Inkuru y&apos;ingenzi</h2>
+          <h2 className={styles.stepTitle}>Step 1 — Ibyerekeye&apos;inkuru</h2>
 
           <input
             type="text"
-            placeholder="Umutwe w'inkuru (Head)"
+            placeholder="Izina ry'inkuru (Head)"
             value={head}
             onChange={(e) => setHead(e.target.value)}
             className={styles.input}
@@ -174,10 +176,16 @@ export default function CreateStoryPage() {
             <option value="Action">Action</option>
             <option value="Drama">Drama</option>
             <option value="Comedy">Comedy</option>
-            <option value="Romance">Romance</option>
+            <option value="Love-Story">Love-story</option>
             <option value="Horror">Horror</option>
             <option value="Sci-Fi">Sci-Fi</option>
             <option value="Fantasy">Fantasy</option>
+            <option value="Historical">Historical</option>
+            <option value="kingdom">Kingdom</option>
+            <option value="Children">Children</option>
+            <option value="Educational">Educational</option>
+            <option value="Crime">Crime</option>
+            <option value="Political">Political</option>
           </select>
 
           <div className={styles.tagsPreview}>
