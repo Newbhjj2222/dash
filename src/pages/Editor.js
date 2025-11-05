@@ -5,6 +5,7 @@ import { db } from "@/components/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { FaBold, FaItalic, FaUnderline, FaHeading, FaListUl, FaLink, FaImage, FaSave, FaTrash, FaArrowLeft } from "react-icons/fa";
 import styles from "@/styles/editor.module.css";
+import Net from "../components/Net";
 
 export default function EditorPage() {
   const router = useRouter();
@@ -102,6 +103,7 @@ export default function EditorPage() {
 
   return (
     <div className={styles.editorContainer}>
+    <Net />
       {/* Toolbar */}
       <div className={styles.toolbar}>
         <button onClick={() => router.back()} title="Subira inyuma"><FaArrowLeft /></button>
