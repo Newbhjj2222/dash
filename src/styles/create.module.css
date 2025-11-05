@@ -1,6 +1,7 @@
 .container {
   background: #ffffff;
   min-height: 100vh;
+  margin: 70px auto;
   padding: 40px 20px;
   display: flex;
   flex-direction: column;
