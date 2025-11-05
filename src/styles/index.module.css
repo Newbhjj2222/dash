@@ -109,7 +109,7 @@
   margin-bottom: 10px;
 }
 
-.postCategory {
+.postCategories {
   font-style: italic;
   color: #555555;
   margin-top: 5px;
@@ -140,7 +140,7 @@
 
 .editBtn,
 .deleteBtn,
-.toggleBtn {
+.toggleBtn,.commentBtn {
   border: none;
   cursor: pointer;
   padding: 10px 16px;
