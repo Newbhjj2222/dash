@@ -110,22 +110,28 @@
 }
 
 /* Styles ya container y'amakategory */
-.postCategories {
-  display: flex;          /* gushyira tags kumurongo */
-  flex-wrap: wrap;        /* zishobora kwiyongera ku murongo ukurikiyeho */
-  gap: 5px;               /* intera hagati ya tags */
+.postCategory {
+  display: inline-flex;        /* kugirango ibe kumurongo umwe n'inyuguti "Category:" */
+  align-items: center;         /* gutuma ihuza neza n'inyuguti */
+  gap: 5px;                    /* intera hagati ya label na tag */
   margin-top: 5px;
+  font-size: 14px;
+  color: #333;                 /* ibara ry'inyuguti */
 }
 
-/* Styles ya tag imwe */
-.postCategories span {
-  background-color: #e0e0e0; /* ibara ry'inyuma rya tag */
-  color: #333333;           /* ibara ry'inyuguti */
-  padding: 3px 10px;        /* intera imbere muri tag */
-  border-radius: 12px;      /* igororotse mu mpande */
+.postCategory strong {
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+.postCategory span {
+  background-color: #f0f0f0;   /* ibara ry'inyuma rya tag */
+  color: #555555;              /* ibara ry'inyuguti muri tag */
+  padding: 3px 10px;           /* intera imbere muri tag */
+  border-radius: 12px;         /* igororotse mu mpande */
   font-size: 14px;
-  font-style: normal;       /* shyira kuri normal niba ushaka ntibe italic */
-  cursor: default;          /* ntabwo ishobora gukandwa, ushobora guhindura niba ushaka clickable */
+  font-style: normal;          /* shyira kuri normal niba ushaka ntibe italic */
+  display: inline-block;
 }
 
 /* ---------------------- */
@@ -186,6 +192,7 @@
 .toggleBtn {
   background-color: #4CAF50; /* ibara rya button */
   color: white; /* ibara ry'inyuguti */
+  margin: 8px;
   padding: 10px 20px; /* intera imbere muri button */
   border: none; /* kuraho border y'umwimerere */
   border-radius: 8px; /* gutunganya imipaka ya button ibe igororotse */
