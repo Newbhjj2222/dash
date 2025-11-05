@@ -172,8 +172,8 @@ export async function getServerSideProps(context) {
         id: docSnap.id,
         head: data.head || "",
         story: data.story || "",
-        category: data.category || "",
-        image: data.image || null,
+        category: data.categories || "",
+        image: data.imageUrl || null,
         views: data.views || 0,
         comments,
       };
