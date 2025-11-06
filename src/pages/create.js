@@ -29,7 +29,7 @@ export default function CreateStoryPage() {
   const [fromEp, setFromEp] = useState(1);
   const [toEp, setToEp] = useState(1);
   const [episodesContent, setEpisodesContent] = useState([]);
-
+  const [loading, setLoading] = useState(false);
   // 🔹 Fata username muri cookies
   useEffect(() => {
     const cookies = document.cookie.split("; ");
@@ -264,8 +264,12 @@ export default function CreateStoryPage() {
               ></div>
             </div>
           ))}
-          <button type="submit" className={styles.button}>
-            Submit All Episodes
+          <button
+            type="submit"
+            className={styles.button}
+            disabled={loading}
+          >
+            {loading ? "Inkuru ziri koherezwa..." : "Submit All Episodes"}
           </button>
         </form>
       )}
