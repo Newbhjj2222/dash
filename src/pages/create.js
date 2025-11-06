@@ -11,6 +11,7 @@ import {
 import { app } from "@/components/firebase";
 import styles from "@/styles/create.module.css";
 import Net from "../components/Net";
+import Folder from "@/components/Folder";
 
 export default function CreateStoryPage() {
   const db = getFirestore(app);
@@ -138,6 +139,7 @@ export default function CreateStoryPage() {
   return (
     <div className={styles.container}>
     <Net />
+    <Folder />
       <h1 className={styles.title}>NetStory Uploader</h1>
       <p className={styles.username}>
         Logged in as <strong>{username}</strong>
