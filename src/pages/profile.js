@@ -116,9 +116,9 @@ export async function getServerSideProps(context) {
 
   if (userSnap.exists()) {
     const data = userSnap.data();
-    // Shaka layID aho FName = username
+    // Shaka layID aho fName = username
     for (const key in data) {
-      if (data[key].FName === username) {
+      if (data[key].fName === username) {
         layID = key;
         userData = data[key];
         break;
@@ -129,7 +129,7 @@ export async function getServerSideProps(context) {
   if (!userData) {
     // Niba user idahari, shyiramo default
     const defaultLayID = `lay_${Date.now()}`;
-    const defaultData = { FName: username, email: "", photo: "" };
+    const defaultData = { fName: username, email: "", photo: "" };
     await updateDoc(userRef, { [defaultLayID]: defaultData }).catch(async () => {
       await setDoc(userRef, { [defaultLayID]: defaultData });
     });
