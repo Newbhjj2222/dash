@@ -90,7 +90,7 @@ export default function Profile({ userData, authorData }) {
           <div className={styles.infoSection}>
             <label>Monitization Status:</label>
             <p className={styles.status}>
-              {authorData?.monitizationStatus || "Pending"}
+              {authorData?.status || "Pending"}
             </p>
           </div>
 
