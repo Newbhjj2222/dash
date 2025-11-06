@@ -33,7 +33,7 @@ const Net = () => {
             <Link href="/balance">Balance</Link>
           </li>
           <li>
-            <Link href="/monetization">Monetization</Link>
+            <Link href="/monetize">Monetization</Link>
           </li>
           <li>
             <Link href="/rules">Rules</Link>
