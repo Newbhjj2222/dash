@@ -3,20 +3,16 @@ import React, { useState } from "react";
 import styles from "@/styles/profile.module.css";
 import Net from "@/components/Net";
 import { db } from "@/components/firebase";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { FaCamera, FaSignOutAlt, FaUserCircle } from "react-icons/fa";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 
-export default function Profile({ userData, status }) {
+export default function Profile({ username, userData, layID, status }) {
   const router = useRouter();
-  const [fname, setFname] = useState(userData?.FName || "");
   const [photo, setPhoto] = useState(userData?.photo || "");
   const [email, setEmail] = useState(userData?.email || "");
   const [feedback, setFeedback] = useState("");
-  const [editingName, setEditingName] = useState(false);
-
-  const username = userData?.username;
 
   const showFeedback = (msg, success = true) => {
     setFeedback(msg);
@@ -33,8 +29,8 @@ export default function Profile({ userData, status }) {
       setPhoto(base64String);
 
       try {
-        const userRef = doc(db, "userdate", username);
-        await updateDoc(userRef, { photo: base64String });
+        const userRef = doc(db, "userdate", "data");
+        await updateDoc(userRef, { [`${layID}.photo`]: base64String });
         showFeedback("Profile photo updated successfully!");
       } catch (err) {
         console.error(err);
@@ -42,20 +38,6 @@ export default function Profile({ userData, status }) {
       }
     };
     reader.readAsDataURL(file);
-  };
-
-  const handleNameChange = async () => {
-    if (!fname.trim()) return showFeedback("Full Name cannot be empty.", false);
-
-    try {
-      const userRef = doc(db, "userdate", username);
-      await updateDoc(userRef, { FName: fname });
-      setEditingName(false);
-      showFeedback("Full Name updated successfully!");
-    } catch (err) {
-      console.error(err);
-      showFeedback("Error updating Full Name!", false);
-    }
   };
 
   const handleLogout = () => {
@@ -89,36 +71,12 @@ export default function Profile({ userData, status }) {
           <h2 className={styles.username}>{username}</h2>
 
           <div className={styles.infoSection}>
-            <label>Full Name:</label>
-            {editingName ? (
-              <div className={styles.editField}>
-                <input
-                  type="text"
-                  value={fname}
-                  onChange={(e) => setFname(e.target.value)}
-                  className={styles.inputBox}
-                />
-                <button onClick={handleNameChange} className={styles.saveBtn}>
-                  Save
-                </button>
-              </div>
-            ) : (
-              <p
-                onClick={() => setEditingName(true)}
-                className={styles.editableText}
-              >
-                {fname || "Click to add full name"}
-              </p>
-            )}
-          </div>
-
-          <div className={styles.infoSection}>
             <label>Email:</label>
             <p>{email || "Not set"}</p>
           </div>
 
           <div className={styles.infoSection}>
-            <label>Monitization Status:</label>
+            <label>Monetization Status:</label>
             <p className={styles.status}>{status}</p>
           </div>
 
@@ -150,19 +108,39 @@ export async function getServerSideProps(context) {
     };
   }
 
-  const userRef = doc(db, "userdate", username);
+  // Fetch document "data"
+  const userRef = doc(db, "userdate", "data");
   const userSnap = await getDoc(userRef);
+  let userData = null;
+  let layID = null;
 
-  if (!userSnap.exists()) {
-    const defaultData = { username, FName: "", email: "", photo: "" };
-    await setDoc(userRef, defaultData);
+  if (userSnap.exists()) {
+    const data = userSnap.data();
+    // Shaka layID aho FName = username
+    for (const key in data) {
+      if (data[key].FName === username) {
+        layID = key;
+        userData = data[key];
+        break;
+      }
+    }
   }
 
-  const userData = userSnap.exists() ? userSnap.data() : { username, FName: "", email: "", photo: "" };
+  if (!userData) {
+    // Niba user idahari, shyiramo default
+    const defaultLayID = `lay_${Date.now()}`;
+    const defaultData = { FName: username, email: "", photo: "" };
+    await updateDoc(userRef, { [defaultLayID]: defaultData }).catch(async () => {
+      await setDoc(userRef, { [defaultLayID]: defaultData });
+    });
+    layID = defaultLayID;
+    userData = defaultData;
+  }
 
+  // Fetch monetization status
   const authorRef = doc(db, "authors", username);
   const authorSnap = await getDoc(authorRef);
   const status = authorSnap.exists() ? authorSnap.data().status : "Pending";
 
-  return { props: { userData: { ...userData, username }, status } };
+  return { props: { username, userData, layID, status } };
 }
