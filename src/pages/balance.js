@@ -1,83 +1,47 @@
-'use client';
-
-import React, { useEffect, useState } from "react";
-import styles from "../styles/balance.module.css"; // shyira aho CSS iri
+import React, { useState } from "react";
+import styles from "../styles/balance.module.css";
 import { db } from "../components/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import Net from "../components/Net";
 
-// 👉 Fungura cookies function
-const getCookie = (name) => {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(";").shift();
-};
-
-export default function Balance() {
-  const [nes, setNes] = useState(0);
-  const [username, setUsername] = useState("");
+// 🔹 Page Component
+export default function Balance({ username, nes }) {
   const [formData, setFormData] = useState({ fone: "", amount: "" });
-  const [loading, setLoading] = useState(true);
-
-  // ✅ Fata username muri cookies hanyuma usome document muri Firestore
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const user = getCookie("username"); // 👈 username iba muri cookies
-        if (!user) {
-          alert("Username ntiyabonetse muri cookies.");
-          setLoading(false);
-          return;
-        }
-
-        setUsername(user);
-        const docRef = doc(db, "authors", user);
-        const snap = await getDoc(docRef);
-
-        if (snap.exists()) {
-          const data = snap.data();
-          setNes(data.nes || 0);
-        } else {
-          setNes(0);
-        }
-      } catch (err) {
-        console.error("Error fetching NES:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
-
+  const [sending, setSending] = useState(false);
   const rwf = nes * 13;
 
-  // ✅ Kubika muri withdrawers collection (doc id = username)
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!formData.fone || !formData.amount) {
       alert("Uzuza neza amakuru yose!");
       return;
     }
 
     try {
+      setSending(true);
       await setDoc(doc(db, "withdrawers", username), {
-        username: username,
-        fone: formData.fone,
-        amount: formData.amount,
-        date: new Date().toISOString(),
-      });
+  ame: username,
+  fone: formData.fone,
+  amount: formData.amount,
+  date: new Date().toISOString(),
+});
       alert("Ibyo wabikuje byoherejwe neza!");
       setFormData({ fone: "", amount: "" });
     } catch (err) {
       console.error("Error saving withdraw request:", err);
       alert("Habaye ikosa mukubika ibyo wabikuje.");
+    } finally {
+      setSending(false);
     }
   };
 
-  if (loading) return <p className={styles.loading}>Loading...</p>;
+  if (!username) {
+    return <p className={styles.loading}>No username found in cookies.</p>;
+  }
 
   return (
     <div className={styles.container}>
+    <Net />
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.left}>
@@ -88,17 +52,13 @@ export default function Balance() {
         </div>
       </div>
 
-      {/* Form yo kubikuza */}
+      {/* Form */}
       <form onSubmit={handleSubmit} className={styles.form}>
         <h2>Withdraw Form</h2>
 
         <label>
           Username:
-          <input
-            type="text"
-            value={username}
-            disabled
-          />
+          <input type="text" value={username} disabled />
         </label>
 
         <label>
@@ -125,8 +85,41 @@ export default function Balance() {
           />
         </label>
 
-        <button type="submit">Ohereza Kubikuza</button>
+        <button type="submit" disabled={sending}>
+          {sending ? "Kohereza..." : "Ohereza Kubikuza"}
+        </button>
       </form>
     </div>
   );
+}
+
+// 🔹 Server Side Rendering (SSR)
+export async function getServerSideProps(context) {
+  const { req } = context;
+  const cookies = req.headers.cookie || "";
+  const match = cookies.match(/username=([^;]+)/);
+  const username = match ? decodeURIComponent(match[1]) : null;
+
+  let nes = 0;
+
+  if (username) {
+    try {
+      const { getFirestore, doc, getDoc } = await import("firebase/firestore");
+      const { db } = await import("../components/firebase");
+      const docRef = doc(db, "authors", username);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        nes = snap.data().nes || 0;
+      }
+    } catch (err) {
+      console.error("Error fetching data from Firestore:", err);
+    }
+  }
+
+  return {
+    props: {
+      username,
+      nes,
+    },
+  };
 }
