@@ -72,7 +72,7 @@ export default function Profile({ userData, authorData }) {
               <div className={styles.editField}>
                 <input
                   type="text"
-                  value={fname}
+                  value={Fname}
                   onChange={(e) => setFname(e.target.value)}
                   className={styles.inputBox}
                 />
