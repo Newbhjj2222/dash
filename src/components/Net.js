@@ -42,7 +42,10 @@ const Net = () => {
             <Link href="/profile">Profile</Link>
           </li>
           <li>
-            <Link href="/chat">Chat</Link>
+            <Link href="https://netchat-2n7k.vercel.app/">Chat</Link>
+          </li>
+        <li>
+            <Link href="https://www.newtalentsg.co.rw">Read stories</Link>
           </li>
         </ul>
       </nav>
