@@ -67,7 +67,7 @@
   }
 
   .nav.open {
-    height: auto; /* height enough to show all links */
+    max-height: 390px; /* height enough to show all links */
   }
 
   .nav ul {
