@@ -19,8 +19,8 @@ export default function CreateStoryPage() {
 
   const [step, setStep] = useState(1);
   const [username, setUsername] = useState("");
-  const [head, setHead] = useState(""); // 🟩 Head aho kuba title
-  const [imageUrl, setImageUrl] = useState(""); // 🟩 Ifoto muri base64
+  const [head, setHead] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [categories, setCategories] = useState([]);
   const [categoryPreview, setCategoryPreview] = useState([]);
   const [folders, setFolders] = useState([]);
@@ -29,7 +29,8 @@ export default function CreateStoryPage() {
   const [fromEp, setFromEp] = useState(1);
   const [toEp, setToEp] = useState(1);
   const [episodesContent, setEpisodesContent] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // ✅ Ibi ni byo byongera "Inkuru ziri koherezwa..."
+
   // 🔹 Fata username muri cookies
   useEffect(() => {
     const cookies = document.cookie.split("; ");
@@ -96,6 +97,8 @@ export default function CreateStoryPage() {
       return;
     }
 
+    setLoading(true); // 🔹 Tangira “loading”
+
     const promises = episodesContent.map((content, index) => {
       const epNumber = fromEp + index;
       const postRef = doc(collection(db, "posts"));
@@ -104,7 +107,7 @@ export default function CreateStoryPage() {
         story: content,
         categories,
         folderId: folder,
-        imageUrl, // 🟩 Ifoto muri base64
+        imageUrl,
         author: username,
         createdAt: new Date().toISOString(),
         episodeNumber: epNumber,
@@ -119,6 +122,8 @@ export default function CreateStoryPage() {
     } catch (err) {
       console.error(err);
       alert("Hari ikibazo cyo kubika inkuru!");
+    } finally {
+      setLoading(false); // 🔹 Isoza “loading”
     }
   };
 
@@ -138,8 +143,8 @@ export default function CreateStoryPage() {
 
   return (
     <div className={styles.container}>
-    <Net />
-    <Folder />
+      <Net />
+      <Folder />
       <h1 className={styles.title}>NetStory Uploader</h1>
       <p className={styles.username}>
         Logged in as <strong>{username}</strong>
@@ -147,103 +152,8 @@ export default function CreateStoryPage() {
 
       {step === 1 && (
         <form onSubmit={handleStep1} className={styles.form}>
-          <h2 className={styles.stepTitle}>Step 1 — Ibyerekeye&apos;inkuru</h2>
-
-          <input
-            type="text"
-            placeholder="Izina ry'inkuru (Head)"
-            value={head}
-            onChange={(e) => setHead(e.target.value)}
-            className={styles.input}
-            required
-          />
-
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            className={styles.input}
-          />
-
-          {imageUrl && (
-            <img src={imageUrl} alt="Preview" className={styles.previewImg} />
-          )}
-
-          <select
-            multiple
-            value={categories}
-            onChange={handleCategoryChange}
-            className={styles.select}
-          >
-            <option value="Action">Action</option>
-            <option value="Drama">Drama</option>
-            <option value="Comedy">Comedy</option>
-            <option value="Love-Story">Love-story</option>
-            <option value="Horror">Horror</option>
-            <option value="Sci-Fi">Sci-Fi</option>
-            <option value="Fantasy">Fantasy</option>
-            <option value="Historical">Historical</option>
-            <option value="kingdom">Kingdom</option>
-            <option value="Children">Children</option>
-            <option value="Educational">Educational</option>
-            <option value="Crime">Crime</option>
-            <option value="Political">Political</option>
-          </select>
-
-          <div className={styles.tagsPreview}>
-            {categoryPreview.map((cat) => (
-              <span key={cat} className={styles.tag}>{cat}</span>
-            ))}
-          </div>
-
-          <select
-            value={folder}
-            onChange={(e) => setFolder(e.target.value)}
-            className={styles.select}
-            required
-          >
-            <option value="">-- Hitamo Folder --</option>
-            {folders.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.title}
-              </option>
-            ))}
-          </select>
-
-          <div className={styles.flexRow}>
-            <label>Season:</label>
-            <select
-              value={season}
-              onChange={(e) => setSeason(e.target.value)}
-              className={styles.selectMini}
-            >
-              {Array.from({ length: 20 }, (_, i) => (
-                <option key={i} value={`S${String(i + 1).padStart(2, "0")}`}>
-                  S{String(i + 1).padStart(2, "0")}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className={styles.flexRow}>
-            <label>From:</label>
-            <input
-              type="number"
-              min={1}
-              value={fromEp}
-              onChange={(e) => setFromEp(parseInt(e.target.value))}
-              className={styles.inputMini}
-            />
-            <label>To:</label>
-            <input
-              type="number"
-              min={fromEp}
-              value={toEp}
-              onChange={(e) => setToEp(parseInt(e.target.value))}
-              className={styles.inputMini}
-            />
-          </div>
-
+          {/* Step 1 Form */}
+          {/* ... ibindi byose ubyihorere uko biri */}
           <button type="submit" className={styles.button}>Next</button>
         </form>
       )}
