@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "cookie": "^1.0.2",
     "firebase": "^12.5.0",
     "js-cookie": "^3.0.5",
