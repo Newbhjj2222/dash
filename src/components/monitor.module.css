@@ -1,82 +1,62 @@
 .container {
-  max-width: 650px;
-  margin: 80px auto;
-  background: #ffffff;
-  padding: 35px;
-  border-radius: 16px;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+  max-width: 480px;
+  margin: 100px auto;
+  background-color: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+  text-align: center;
 }
 
 .title {
-  text-align: center;
-  color: #1f2937;
   font-size: 1.8rem;
   font-weight: 700;
+  color: #1f2937;
   margin-bottom: 25px;
 }
 
-.username {
-  font-size: 0.9rem;
-  color: #555;
-  margin-bottom: 10px;
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
-.form label {
-  display: block;
-  margin-top: 15px;
-  font-weight: 600;
-  color: #333;
-}
-
-.form input[type="text"],
-.form input[type="email"],
-.form input[type="file"],
+.form input,
 .form textarea {
   width: 100%;
   padding: 10px;
-  margin-top: 6px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
   outline: none;
-  transition: border 0.2s ease;
+  transition: border 0.3s ease;
 }
 
 .form input:focus,
 .form textarea:focus {
-  border-color: #2563eb;
+  border: 1px solid #0070f3;
 }
 
-.form textarea {
-  min-height: 90px;
-  resize: vertical;
+.label {
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  margin-top: 10px;
 }
 
-button {
+.submitButton {
   margin-top: 20px;
   width: 100%;
-  background-color: #2563eb;
+  background: #0070f3;
   color: white;
   border: none;
   padding: 12px;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: bold;
+  font-size: 1.1rem;
   transition: background 0.3s ease;
 }
 
-button:hover {
-  background-color: #1d4ed8;
-}
-
-button:disabled {
-  background-color: #93c5fd;
-  cursor: not-allowed;
-}
-
-.success {
-  text-align: center;
-  margin-top: 15px;
-  color: #16a34a;
-  font-weight: bold;
+.submitButton:hover {
+  background: #005ac1;
 }
