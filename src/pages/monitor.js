@@ -20,6 +20,7 @@ export default function MonitorPage() {
     screenshotStories: null,
     screenshotRefer: null,
   });
+  const [previews, setPreviews] = useState({});
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -31,7 +32,12 @@ export default function MonitorPage() {
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (files) {
-      setFormData((prev) => ({ ...prev, [name]: files[0] }));
+      const file = files[0];
+      setFormData((prev) => ({ ...prev, [name]: file }));
+      setPreviews((prev) => ({
+        ...prev,
+        [name]: URL.createObjectURL(file),
+      }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -111,6 +117,7 @@ export default function MonitorPage() {
         screenshotStories: null,
         screenshotRefer: null,
       });
+      setPreviews({});
     } catch (err) {
       console.error(err);
       setErrorMsg(err.message || "Habaye ikibazo kidasobanutse");
@@ -161,18 +168,26 @@ export default function MonitorPage() {
 
         <label className={styles.label}>Ifoto y’indangamuntu:</label>
         <input type="file" name="idCard" accept="image/*" onChange={handleChange} required />
+        {previews.idCard && <img src={previews.idCard} alt="Preview" className={styles.preview} />}
 
         <label className={styles.label}>Ifoto yawe bwite:</label>
         <input type="file" name="profilePhoto" accept="image/*" onChange={handleChange} required />
+        {previews.profilePhoto && <img src={previews.profilePhoto} alt="Preview" className={styles.preview} />}
 
         <label className={styles.label}>Screenshot y’inkuru wanditse:</label>
         <input type="file" name="screenshotStories" accept="image/*" onChange={handleChange} required />
+        {previews.screenshotStories && (
+          <img src={previews.screenshotStories} alt="Preview" className={styles.preview} />
+        )}
 
         <label className={styles.label}>Screenshot ya reffer program:</label>
         <input type="file" name="screenshotRefer" accept="image/*" onChange={handleChange} required />
+        {previews.screenshotRefer && (
+          <img src={previews.screenshotRefer} alt="Preview" className={styles.preview} />
+        )}
 
         <button type="submit" className={styles.submitButton} disabled={loading}>
-          {loading ? "Submitting..." : "Ohereza Request"}
+          {loading ? <div className={styles.loader}></div> : "Ohereza Request"}
         </button>
       </form>
     </div>
