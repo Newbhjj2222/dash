@@ -1,150 +1,146 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import emailjs from "@emailjs/browser";
-import { db } from "../components/firebase"; // Firebase yawe
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import styles from "../components/monitor.module.css";
 
-export default function Monitor() {
+import React, { useState, useEffect } from "react";
+import styles from "../components/monitor.module.css";
+import { db } from "../components/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import emailjs from "@emailjs/browser";
+
+export default function MonitorPage() {
   const [username, setUsername] = useState("");
-  const [form, setForm] = useState({
+  const [formData, setFormData] = useState({
     fullName: "",
     whatsapp: "",
     email: "",
     idCard: "",
-    photo: "",
+    profilePhoto: "",
     screenshotStories: "",
-    screenshotStats: "",
-    requestNote: "",
+    screenshotRefer: "",
+    reason: "",
   });
-  const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
 
-  // Fata username muri cookies
   useEffect(() => {
-    const cookies = document.cookie.split("; ");
-    const userCookie = cookies.find((row) => row.startsWith("username="));
-    if (userCookie) setUsername(userCookie.split("=")[1]);
+    // Fata username muri cookies
+    const cookies = document.cookie.split("; ").find((row) => row.startsWith("username="));
+    if (cookies) setUsername(cookies.split("=")[1]);
   }, []);
 
-  // Gusoma amafoto / screenshots nka base64
-  const handleFile = (e) => {
-    const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setForm({ ...form, [e.target.name]: reader.result });
-    };
-    if (file) reader.readAsDataURL(file);
-  };
-
+  // Guhindura input
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value, files } = e.target;
+    if (files) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, [name]: reader.result }));
+      };
+      reader.readAsDataURL(files[0]);
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
+  // Kohereza form
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
 
     try {
-      // 1️⃣ Bika amakuru yose muri Firestore
+      // 1️⃣ Banza ubike muri Firestore
       await addDoc(collection(db, "monetization_requests"), {
         username,
-        ...form,
+        ...formData,
         createdAt: serverTimestamp(),
       });
 
-      // 2️⃣ Ohereza notification kuri email yawe ukoresheje EmailJS
+      // 2️⃣ Noneho wohereze kuri email ya admin
       await emailjs.send(
-        "service_fl4f1g4", // Service ID
-        "template_ulyeyn8", // Template ID
+        "service_fl4f1g4",
+        "template_ulyeyn8",
         {
+          from_name: formData.fullName,
+          from_email: formData.email,
+          whatsapp: formData.whatsapp,
           username,
-          fullName: form.fullName,
-          email: form.email,
+          reason: formData.reason,
+          message: `User ${username} yohereje request yo kuri monetize.`,
+          idCard: formData.idCard,
+          profilePhoto: formData.profilePhoto,
+          screenshotStories: formData.screenshotStories,
+          screenshotRefer: formData.screenshotRefer,
+          to_email: "admin@newtalentsg.co.rw",
         },
-        "35yUSPlv9GT6X1v5o" // Public Key
+        "35yUSPlv9GT6X1v5o"
       );
 
-      setSent(true);
-      setForm({
+      alert("Request yawe yoherejwe neza!");
+      setFormData({
         fullName: "",
         whatsapp: "",
         email: "",
         idCard: "",
-        photo: "",
+        profilePhoto: "",
         screenshotStories: "",
-        screenshotStats: "",
-        requestNote: "",
+        screenshotRefer: "",
+        reason: "",
       });
     } catch (error) {
-      console.error("❌ Error submitting request:", error);
-      alert("Something went wrong. Try again.");
-    } finally {
-      setLoading(false);
+      console.error("Error:", error);
+      alert("Habaye ikibazo mu kohereza request.");
     }
   };
 
   return (
     <div className={styles.container}>
-      <h2 className={styles.title}>Monetization Request</h2>
+      <h2 className={styles.title}>Monetization Request Form</h2>
 
       <form className={styles.form} onSubmit={handleSubmit}>
-        <p className={styles.username}>
-          Logged in as: <b>{username || "Unknown"}</b>
-        </p>
-
-        <label>Full Name</label>
         <input
           type="text"
           name="fullName"
-          value={form.fullName}
+          placeholder="Amazina yawe bwite"
+          value={formData.fullName}
           onChange={handleChange}
           required
         />
-
-        <label>WhatsApp Number</label>
         <input
           type="text"
           name="whatsapp"
-          value={form.whatsapp}
+          placeholder="Numero ya WhatsApp"
+          value={formData.whatsapp}
           onChange={handleChange}
           required
         />
-
-        <label>Email Address</label>
         <input
           type="email"
           name="email"
-          value={form.email}
+          placeholder="Email yawe"
+          value={formData.email}
           onChange={handleChange}
           required
         />
-
-        <label>ID Card (Image)</label>
-        <input type="file" name="idCard" accept="image/*" onChange={handleFile} required />
-
-        <label>Your Photo</label>
-        <input type="file" name="photo" accept="image/*" onChange={handleFile} required />
-
-        <label>Screenshot - Stories Stats</label>
-        <input type="file" name="screenshotStories" accept="image/*" onChange={handleFile} required />
-
-        <label>Screenshot - Referral Stats</label>
-        <input type="file" name="screenshotStats" accept="image/*" onChange={handleFile} required />
-
-        <label>Additional Notes / Request Reason</label>
         <textarea
-          name="requestNote"
-          value={form.requestNote}
+          name="reason"
+          placeholder="Icyo wifuza cyangwa impamvu ya request"
+          value={formData.reason}
           onChange={handleChange}
-          placeholder="Explain your monetization request..."
+          rows="3"
+          required
         ></textarea>
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Submitting..." : "Submit Request"}
-        </button>
+        <label className={styles.label}>Ifoto y’indangamuntu:</label>
+        <input type="file" name="idCard" accept="image/*" onChange={handleChange} required />
 
-        {sent && <p className={styles.success}>✅ Request submitted successfully!</p>}
+        <label className={styles.label}>Ifoto yawe bwite:</label>
+        <input type="file" name="profilePhoto" accept="image/*" onChange={handleChange} required />
+
+        <label className={styles.label}>Screenshot y’inkuru wanditse:</label>
+        <input type="file" name="screenshotStories" accept="image/*" onChange={handleChange} required />
+
+        <label className={styles.label}>Screenshot ya reffer program:</label>
+        <input type="file" name="screenshotRefer" accept="image/*" onChange={handleChange} required />
+
+        <button type="submit" className={styles.submitButton}>
+          Ohereza Request
+        </button>
       </form>
     </div>
   );
