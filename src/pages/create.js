@@ -21,6 +21,7 @@ export default function CreateStoryPage() {
   const [step, setStep] = useState(1);
   const [username, setUsername] = useState("");
   const [head, setHead] = useState("");
+  const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
   const [categories, setCategories] = useState([]);
   const [categoryPreview, setCategoryPreview] = useState([]);
@@ -67,20 +68,23 @@ export default function CreateStoryPage() {
     fetchFolders();
   }, [username, db]);
 
-  // 🟢 Hindura ifoto muri base64
+  // 🟢 Handle Image File
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => setImageUrl(reader.result);
-    reader.readAsDataURL(file);
+    setImageFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setImageUrl(reader.result);
+      reader.readAsDataURL(file);
+    }
   };
 
   // 🟢 Step 1 handler
   const handleStep1 = (e) => {
     e.preventDefault();
     setErrorMessage("");
-    if (!head || !folder || categories.length === 0) {
+
+    if (!head || !folder || categories.length === 0 || !imageFile) {
       setErrorMessage("Wuzuza amakuru yose!");
       return;
     }
@@ -88,12 +92,13 @@ export default function CreateStoryPage() {
       setErrorMessage("From ntigomba kurenza To!");
       return;
     }
+
     const total = toEp - fromEp + 1;
     setEpisodesContent(Array.from({ length: total }, () => ""));
     setStep(2);
   };
 
-  // 🟢 Step 2 handler — Bika muri Firestore
+  // 🟢 Step 2 handler — Upload Image + Bika muri Firestore
   const handleStep2 = async (e) => {
     e.preventDefault();
     setErrorMessage("");
@@ -103,37 +108,61 @@ export default function CreateStoryPage() {
       return;
     }
 
+    if (!imageFile) {
+      setErrorMessage("Ntufite ifoto wahisemo!");
+      return;
+    }
+
     setLoading(true);
 
-    const promises = episodesContent.map((content, index) => {
-      const epNumber = fromEp + index;
-      const postRef = doc(collection(db, "posts"));
-      return setDoc(postRef, {
-        head: `${head} ${season} Ep ${epNumber}`,
-        story: content,
-        categories,
-        folderId: folder,
-        imageUrl,
-        author: username,
-        createdAt: new Date().toISOString(),
-        episodeNumber: epNumber,
-        season,
-        monetizationStatus: "pending", // 🟢 Yongeremo status
-      });
-    });
-
     try {
+      // 1️⃣ Upload image to ImgBB
+      const API_KEY = "d3b627c6d75013b8aaf2aac6de73dcb5";
+      const formData = new FormData();
+      formData.append("image", imageFile);
+
+      const uploadResponse = await fetch(
+        `https://api.imgbb.com/1/upload?key=${API_KEY}`,
+        { method: "POST", body: formData }
+      );
+
+      const uploadData = await uploadResponse.json();
+      if (!uploadData.success) {
+        throw new Error("Error uploading image to ImgBB");
+      }
+
+      const uploadedImageUrl = uploadData.data.url;
+
+      // 2️⃣ Save all episodes to Firestore
+      const promises = episodesContent.map((content, index) => {
+        const epNumber = fromEp + index;
+        const postRef = doc(collection(db, "posts"));
+        return setDoc(postRef, {
+          head: `${head} ${season} Ep ${epNumber}`,
+          story: content,
+          categories,
+          folderId: folder,
+          imageUrl: uploadedImageUrl,
+          author: username,
+          createdAt: new Date().toISOString(),
+          episodeNumber: epNumber,
+          season,
+          monetizationStatus: "pending",
+        });
+      });
+
       await Promise.all(promises);
       setLoading(false);
-      alert("Inkuru zose zoherejwe neza ✅");
+      alert("✅ Inkuru zose zoherejwe neza!");
       router.push("/dashboard");
     } catch (err) {
       console.error("Firestore Error:", err);
       setLoading(false);
-      setErrorMessage("Hari ikibazo cyo kubika inkuru: " + err.message);
+      setErrorMessage("Hari ikibazo: " + err.message);
     }
   };
 
+  // 🟢 Categories
   const handleCategoryChange = (e) => {
     const selected = Array.from(e.target.selectedOptions, (opt) => opt.value);
     setCategories(selected);
@@ -179,6 +208,7 @@ export default function CreateStoryPage() {
             accept="image/*"
             onChange={handleImageChange}
             className={styles.input}
+            required
           />
 
           {imageUrl && (
@@ -262,13 +292,16 @@ export default function CreateStoryPage() {
             />
           </div>
 
-          <button type="submit" className={styles.button}>Next ➡️</button>
+          <button type="submit" className={styles.button}>
+            Next ➡️
+          </button>
         </form>
       )}
 
       {step === 2 && (
         <form onSubmit={handleStep2} className={styles.form}>
           <h2 className={styles.stepTitle}>Step 2 — Andika Episodes</h2>
+
           {episodesContent.map((content, index) => (
             <div key={index} className={styles.episodeContainer}>
               <h3>
@@ -285,11 +318,7 @@ export default function CreateStoryPage() {
             </div>
           ))}
 
-          <button
-            type="submit"
-            className={styles.button}
-            disabled={loading}
-          >
+          <button type="submit" className={styles.button} disabled={loading}>
             {loading ? "📤 Inkuru zirimo koherezwa..." : "✅ Ohereza Inkuru Zose"}
           </button>
         </form>
