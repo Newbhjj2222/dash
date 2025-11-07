@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import emailjs from "@emailjs/browser";
 import { db } from "../components/firebase"; // Firebase yawe
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import styles from "./monitor.module.css";
+import styles from "../components/monitor.module.css";
 
 export default function Monitor() {
   const [username, setUsername] = useState("");
