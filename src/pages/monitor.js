@@ -21,6 +21,7 @@ export default function MonitorPage() {
     screenshotRefer: null,
   });
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     const cookies = document.cookie.split("; ").find((row) => row.startsWith("username="));
@@ -36,58 +37,70 @@ export default function MonitorPage() {
     }
   };
 
-  // Upload image kuri ImgBB
   const uploadToImgBB = async (file) => {
-    const form = new FormData();
-    form.append("image", file);
-    const res = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
-      method: "POST",
-      body: form,
-    });
-    const data = await res.json();
-    if (data.success) return data.data.url;
-    else throw new Error("ImgBB upload failed");
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
+        method: "POST",
+        body: form,
+      });
+      const data = await res.json();
+      if (data.success) return data.data.url;
+      else throw new Error(data.error.message || "ImgBB upload failed");
+    } catch (err) {
+      throw new Error(`ImgBB Error: ${err.message}`);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg("");
 
     try {
-      // 1️⃣ Ohereza amafoto yose kuri ImgBB
+      // Upload amafoto yose kuri ImgBB
       const idCardUrl = formData.idCard ? await uploadToImgBB(formData.idCard) : "";
       const profilePhotoUrl = formData.profilePhoto ? await uploadToImgBB(formData.profilePhoto) : "";
       const screenshotStoriesUrl = formData.screenshotStories ? await uploadToImgBB(formData.screenshotStories) : "";
       const screenshotReferUrl = formData.screenshotRefer ? await uploadToImgBB(formData.screenshotRefer) : "";
 
-      // 2️⃣ Bika muri Firestore
-      await addDoc(collection(db, "monetization_requests"), {
-        username,
-        fullName: formData.fullName,
-        whatsapp: formData.whatsapp,
-        email: formData.email,
-        reason: formData.reason,
-        idCardUrl,
-        profilePhotoUrl,
-        screenshotStoriesUrl,
-        screenshotReferUrl,
-        createdAt: serverTimestamp(),
-      });
-
-      // 3️⃣ Ohereza notification kuri email ya admin
-      await emailjs.send(
-        "service_fl4f1g4",
-        "template_ulyeyn8",
-        {
+      // Bika muri Firestore
+      try {
+        await addDoc(collection(db, "monetization_requests"), {
           username,
           fullName: formData.fullName,
+          whatsapp: formData.whatsapp,
           email: formData.email,
-          message: `User ${username} yohereje request yo monetize.`,
-        },
-        "35yUSPlv9GT6X1v5o"
-      );
+          reason: formData.reason,
+          idCardUrl,
+          profilePhotoUrl,
+          screenshotStoriesUrl,
+          screenshotReferUrl,
+          createdAt: serverTimestamp(),
+        });
+      } catch (firestoreErr) {
+        throw new Error(`Firestore Error: ${firestoreErr.message}`);
+      }
 
-      alert("Request yawe yoherejwe neza!");
+      // Ohereza email kuri admin
+      try {
+        await emailjs.send(
+          "service_fl4f1g4",
+          "template_ulyeyn8",
+          {
+            username,
+            fullName: formData.fullName,
+            email: formData.email,
+            message: `User ${username} yohereje request yo monetize.`,
+          },
+          "35yUSPlv9GT6X1v5o"
+        );
+      } catch (emailErr) {
+        throw new Error(`EmailJS Error: ${emailErr.text || emailErr.message}`);
+      }
+
+      alert("✅ Request yawe yoherejwe neza!");
       setFormData({
         fullName: "",
         whatsapp: "",
@@ -98,9 +111,9 @@ export default function MonitorPage() {
         screenshotStories: null,
         screenshotRefer: null,
       });
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Habaye ikibazo mu kohereza request.");
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(err.message || "Habaye ikibazo kidasobanutse");
     } finally {
       setLoading(false);
     }
@@ -109,6 +122,8 @@ export default function MonitorPage() {
   return (
     <div className={styles.container}>
       <h2 className={styles.title}>Monetization Request Form</h2>
+
+      {errorMsg && <p className={styles.error}>{errorMsg}</p>}
 
       <form className={styles.form} onSubmit={handleSubmit}>
         <input
