@@ -154,7 +154,7 @@ export default function CreateStoryPage() {
       await Promise.all(promises);
       setLoading(false);
       alert("✅ Inkuru zose zoherejwe neza!");
-      router.push("/dashboard");
+      router.push("/");
     } catch (err) {
       console.error("Firestore Error:", err);
       setLoading(false);
