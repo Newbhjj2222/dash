@@ -17,10 +17,11 @@ export default function CreateStoryPage() {
   const db = getFirestore(app);
   const router = useRouter();
 
+  // 🟩 STATES
   const [step, setStep] = useState(1);
   const [username, setUsername] = useState("");
-  const [head, setHead] = useState(""); // Izina ry’inkuru
-  const [imageUrl, setImageUrl] = useState(""); // Ifoto muri base64
+  const [head, setHead] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [categories, setCategories] = useState([]);
   const [categoryPreview, setCategoryPreview] = useState([]);
   const [folders, setFolders] = useState([]);
@@ -29,9 +30,10 @@ export default function CreateStoryPage() {
   const [fromEp, setFromEp] = useState(1);
   const [toEp, setToEp] = useState(1);
   const [episodesContent, setEpisodesContent] = useState([]);
-  const [loading, setLoading] = useState(false); // Inkuru ziri koherezwa...
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // 🔹 Fata username muri cookies
+  // 🟢 SSR - Fata username muri cookies
   useEffect(() => {
     const cookies = document.cookie.split("; ");
     const userCookie = cookies.find((row) => row.startsWith("username="));
@@ -43,7 +45,7 @@ export default function CreateStoryPage() {
     }
   }, [router]);
 
-  // 🔹 Fata folders z'umukoresha
+  // 🟢 SSR - Fata folders z'umukoresha
   useEffect(() => {
     if (!username) return;
     const fetchFolders = async () => {
@@ -59,12 +61,13 @@ export default function CreateStoryPage() {
         setFolders(userFolders);
       } catch (err) {
         console.error("Error fetching folders:", err);
+        setErrorMessage("Ntibyakunze gufata folders: " + err.message);
       }
     };
     fetchFolders();
   }, [username, db]);
 
-  // 🔹 Hindura ifoto muri base64
+  // 🟢 Hindura ifoto muri base64
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -73,15 +76,16 @@ export default function CreateStoryPage() {
     reader.readAsDataURL(file);
   };
 
-  // 🔹 Step 1: Andika amakuru y’inkuru
+  // 🟢 Step 1 handler
   const handleStep1 = (e) => {
     e.preventDefault();
+    setErrorMessage("");
     if (!head || !folder || categories.length === 0) {
-      alert("Wuzuza amakuru yose mbere yo gukomeza!");
+      setErrorMessage("Wuzuza amakuru yose!");
       return;
     }
     if (fromEp > toEp) {
-      alert("From ntigomba kurenza To!");
+      setErrorMessage("From ntigomba kurenza To!");
       return;
     }
     const total = toEp - fromEp + 1;
@@ -89,15 +93,17 @@ export default function CreateStoryPage() {
     setStep(2);
   };
 
-  // 🔹 Step 2: Ohereza inkuru muri Firestore
+  // 🟢 Step 2 handler — Bika muri Firestore
   const handleStep2 = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
+
     if (episodesContent.some((ep) => !ep.trim())) {
-      alert("Andika content ya buri episode mbere yo kohereza!");
+      setErrorMessage("Andika content ya buri episode!");
       return;
     }
 
-    setLoading(true); // Tangira “loading”
+    setLoading(true);
 
     const promises = episodesContent.map((content, index) => {
       const epNumber = fromEp + index;
@@ -112,29 +118,28 @@ export default function CreateStoryPage() {
         createdAt: new Date().toISOString(),
         episodeNumber: epNumber,
         season,
+        monetizationStatus: "pending", // 🟢 Yongeremo status
       });
     });
 
     try {
       await Promise.all(promises);
-      alert("✅ Inkuru zose zoherejwe neza!");
+      setLoading(false);
+      alert("Inkuru zose zoherejwe neza ✅");
       router.push("/dashboard");
     } catch (err) {
-      console.error(err);
-      alert("❌ Hari ikibazo cyo kubika inkuru!");
-    } finally {
-      setLoading(false); // Isoza “loading”
+      console.error("Firestore Error:", err);
+      setLoading(false);
+      setErrorMessage("Hari ikibazo cyo kubika inkuru: " + err.message);
     }
   };
 
-  // 🔹 Guhindura category
   const handleCategoryChange = (e) => {
     const selected = Array.from(e.target.selectedOptions, (opt) => opt.value);
     setCategories(selected);
     setCategoryPreview(selected);
   };
 
-  // 🔹 Guhindura episode content
   const handleEpisodeChange = (index, value) => {
     setEpisodesContent((prev) => {
       const copy = [...prev];
@@ -143,19 +148,22 @@ export default function CreateStoryPage() {
     });
   };
 
+  // 🟩 UI
   return (
     <div className={styles.container}>
       <Net />
       <Folder />
+
       <h1 className={styles.title}>NetStory Uploader</h1>
       <p className={styles.username}>
         Logged in as <strong>{username}</strong>
       </p>
 
-      {/* 🟩 STEP 1 */}
+      {errorMessage && <p className={styles.error}>{errorMessage}</p>}
+
       {step === 1 && (
         <form onSubmit={handleStep1} className={styles.form}>
-          <h2 className={styles.stepTitle}>Step 1 — Ibyerekeye inkuru</h2>
+          <h2 className={styles.stepTitle}>Step 1 — Ibyerekeye&apos;inkuru</h2>
 
           <input
             type="text"
@@ -182,7 +190,6 @@ export default function CreateStoryPage() {
             value={categories}
             onChange={handleCategoryChange}
             className={styles.select}
-            required
           >
             <option value="Action">Action</option>
             <option value="Drama">Drama</option>
@@ -201,7 +208,9 @@ export default function CreateStoryPage() {
 
           <div className={styles.tagsPreview}>
             {categoryPreview.map((cat) => (
-              <span key={cat} className={styles.tag}>{cat}</span>
+              <span key={cat} className={styles.tag}>
+                {cat}
+              </span>
             ))}
           </div>
 
@@ -253,18 +262,18 @@ export default function CreateStoryPage() {
             />
           </div>
 
-          <button type="submit" className={styles.button}>Next</button>
+          <button type="submit" className={styles.button}>Next ➡️</button>
         </form>
       )}
 
-      {/* 🟩 STEP 2 */}
       {step === 2 && (
         <form onSubmit={handleStep2} className={styles.form}>
           <h2 className={styles.stepTitle}>Step 2 — Andika Episodes</h2>
-
           {episodesContent.map((content, index) => (
             <div key={index} className={styles.episodeContainer}>
-              <h3>{head} {season} Ep {fromEp + index}</h3>
+              <h3>
+                {head} {season} Ep {fromEp + index}
+              </h3>
               <div
                 contentEditable
                 className={styles.editableDiv}
@@ -281,7 +290,7 @@ export default function CreateStoryPage() {
             className={styles.button}
             disabled={loading}
           >
-            {loading ? "Inkuru ziri koherezwa..." : "Submit All Episodes"}
+            {loading ? "📤 Inkuru zirimo koherezwa..." : "✅ Ohereza Inkuru Zose"}
           </button>
         </form>
       )}
