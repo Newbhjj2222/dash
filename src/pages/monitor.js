@@ -6,67 +6,83 @@ import { db } from "../components/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import emailjs from "@emailjs/browser";
 
+const API_KEY = "d3b627c6d75013b8aaf2aac6de73dcb5";
+
 export default function MonitorPage() {
   const [username, setUsername] = useState("");
   const [formData, setFormData] = useState({
     fullName: "",
     whatsapp: "",
     email: "",
-    idCard: "",
-    profilePhoto: "",
-    screenshotStories: "",
-    screenshotRefer: "",
     reason: "",
+    idCard: null,
+    profilePhoto: null,
+    screenshotStories: null,
+    screenshotRefer: null,
   });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Fata username muri cookies
     const cookies = document.cookie.split("; ").find((row) => row.startsWith("username="));
     if (cookies) setUsername(cookies.split("=")[1]);
   }, []);
 
-  // Guhindura input
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (files) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, [name]: reader.result }));
-      };
-      reader.readAsDataURL(files[0]);
+      setFormData((prev) => ({ ...prev, [name]: files[0] }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
-  // Kohereza form
+  // Upload image kuri ImgBB
+  const uploadToImgBB = async (file) => {
+    const form = new FormData();
+    form.append("image", file);
+    const res = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
+      method: "POST",
+      body: form,
+    });
+    const data = await res.json();
+    if (data.success) return data.data.url;
+    else throw new Error("ImgBB upload failed");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
-      // 1️⃣ Banza ubike muri Firestore
+      // 1️⃣ Ohereza amafoto yose kuri ImgBB
+      const idCardUrl = formData.idCard ? await uploadToImgBB(formData.idCard) : "";
+      const profilePhotoUrl = formData.profilePhoto ? await uploadToImgBB(formData.profilePhoto) : "";
+      const screenshotStoriesUrl = formData.screenshotStories ? await uploadToImgBB(formData.screenshotStories) : "";
+      const screenshotReferUrl = formData.screenshotRefer ? await uploadToImgBB(formData.screenshotRefer) : "";
+
+      // 2️⃣ Bika muri Firestore
       await addDoc(collection(db, "monetization_requests"), {
         username,
-        ...formData,
+        fullName: formData.fullName,
+        whatsapp: formData.whatsapp,
+        email: formData.email,
+        reason: formData.reason,
+        idCardUrl,
+        profilePhotoUrl,
+        screenshotStoriesUrl,
+        screenshotReferUrl,
         createdAt: serverTimestamp(),
       });
 
-      // 2️⃣ Noneho wohereze kuri email ya admin
+      // 3️⃣ Ohereza notification kuri email ya admin
       await emailjs.send(
         "service_fl4f1g4",
         "template_ulyeyn8",
         {
-          from_name: formData.fullName,
-          from_email: formData.email,
-          whatsapp: formData.whatsapp,
           username,
-          reason: formData.reason,
-          message: `User ${username} yohereje request yo kuri monetize.`,
-          idCard: formData.idCard,
-          profilePhoto: formData.profilePhoto,
-          screenshotStories: formData.screenshotStories,
-          screenshotRefer: formData.screenshotRefer,
-          to_email: "admin@newtalentsg.co.rw",
+          fullName: formData.fullName,
+          email: formData.email,
+          message: `User ${username} yohereje request yo monetize.`,
         },
         "35yUSPlv9GT6X1v5o"
       );
@@ -76,15 +92,17 @@ export default function MonitorPage() {
         fullName: "",
         whatsapp: "",
         email: "",
-        idCard: "",
-        profilePhoto: "",
-        screenshotStories: "",
-        screenshotRefer: "",
         reason: "",
+        idCard: null,
+        profilePhoto: null,
+        screenshotStories: null,
+        screenshotRefer: null,
       });
     } catch (error) {
       console.error("Error:", error);
       alert("Habaye ikibazo mu kohereza request.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -119,7 +137,7 @@ export default function MonitorPage() {
         />
         <textarea
           name="reason"
-          placeholder="Icyo wifuza cyangwa impamvu ya request"
+          placeholder="Impamvu ya request"
           value={formData.reason}
           onChange={handleChange}
           rows="3"
@@ -138,8 +156,8 @@ export default function MonitorPage() {
         <label className={styles.label}>Screenshot ya reffer program:</label>
         <input type="file" name="screenshotRefer" accept="image/*" onChange={handleChange} required />
 
-        <button type="submit" className={styles.submitButton}>
-          Ohereza Request
+        <button type="submit" className={styles.submitButton} disabled={loading}>
+          {loading ? "Submitting..." : "Ohereza Request"}
         </button>
       </form>
     </div>
