@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { db } from "../components/firebase";
 import { collection, addDoc } from "firebase/firestore";
 import Cookies from "js-cookie";
+import Net from "../components/Net";
 
 export default function LyricsPage({ usernameFromServer }) {
   const [title, setTitle] = useState("");
@@ -100,6 +101,8 @@ export default function LyricsPage({ usernameFromServer }) {
   };
 
   return (
+    <>
+    <Net />
     <div className="lyrics-container">
       <h1 className="title">Upload Lyrics & Audio</h1>
 
@@ -248,6 +251,7 @@ export default function LyricsPage({ usernameFromServer }) {
         }
       `}</style>
     </div>
+        </>
   );
 }
 
