@@ -150,7 +150,7 @@ export default function LyricsPage({ usernameFromServer }) {
       <style jsx>{`
         .lyrics-container {
           max-width: 600px;
-          margin: 80px auto;
+          margin: 110px auto;
           padding: 25px;
           border-radius: 16px;
           background: #f9fafb;
