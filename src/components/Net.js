@@ -38,6 +38,12 @@ const Net = () => {
           <li>
             <Link href="/rules">Rules</Link>
           </li>
+         <li>
+            <Link href="/lyrics">write songs</Link>
+          </li>
+         <li>
+            <Link href="/ly">Manage your songs</Link>
+          </li>
           <li>
             <Link href="/profile">Profile</Link>
           </li>
