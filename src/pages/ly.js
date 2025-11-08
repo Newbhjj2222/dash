@@ -16,7 +16,7 @@ export default function LyDashboard({ initialData, username }) {
 
   // Delete audio
   const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this audio?")) return;
+    if (!window.confirm("Are you sure you want to delete this audio?")) return;
 
     try {
       await deleteDoc(doc(db, "lyrics", id));
@@ -32,7 +32,9 @@ export default function LyDashboard({ initialData, username }) {
       <Net />
       <div className="dashboard-container">
         <h1>My Audio Dashboard</h1>
+
         {audios.length === 0 && <p>No audios found.</p>}
+
         {audios.map((audio) => (
           <div key={audio.id} className="audio-card">
             <h2 className="title">{audio.title}</h2>
@@ -54,8 +56,6 @@ export default function LyDashboard({ initialData, username }) {
           </div>
         ))}
       </div>
-
-  
 
       <style jsx>{`
         .dashboard-container {
@@ -137,17 +137,19 @@ export default function LyDashboard({ initialData, username }) {
 
 // SSR: fetch only audios for username in cookies
 export async function getServerSideProps(context) {
-  // Get username from cookies
+  // Parse username from cookies
   const cookies = context.req.headers.cookie || "";
   const usernameCookie = cookies
     .split("; ")
     .find((c) => c.startsWith("username="));
-  const username = usernameCookie ? usernameCookie.split("=")[1] : null;
+  const username = usernameCookie
+    ? decodeURIComponent(usernameCookie.split("=")[1])
+    : null;
 
   if (!username) {
     return {
       redirect: {
-        destination: "/login", // redirect if no username cookie
+        destination: "/login",
         permanent: false,
       },
     };
