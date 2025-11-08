@@ -6,17 +6,18 @@ import Cookies from "js-cookie";
 export default function LyricsPage({ usernameFromServer }) {
   const [title, setTitle] = useState("");
   const [audio, setAudio] = useState(null);
+  const [audioPreview, setAudioPreview] = useState(null); // <-- preview
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [errorDetail, setErrorDetail] = useState("");
   const lyricsRef = useRef(null);
 
-  // 🔼 Upload audio kuri Cloudinary (preset audiomp3)
+  // Upload audio kuri Cloudinary (preset audiomp3)
   const uploadToCloudinary = async (file) => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("upload_preset", "audiomp3"); // preset ya Cloudinary unsigned
+      formData.append("upload_preset", "audiomp3"); // preset unsigned
 
       const res = await fetch(
         "https://api.cloudinary.com/v1_1/dilowy3fd/video/upload",
@@ -27,18 +28,16 @@ export default function LyricsPage({ usernameFromServer }) {
       );
 
       const data = await res.json();
-
       if (!res.ok || !data.secure_url) {
         throw new Error(data.error?.message || "Cloudinary upload failed");
       }
-
       return data.secure_url;
     } catch (err) {
       throw new Error(`Cloudinary Error: ${err.message}`);
     }
   };
 
-  // 💾 Kubika muri Firestore
+  // Kubika muri Firestore
   const saveToFirestore = async (data) => {
     try {
       await addDoc(collection(db, "lyrics"), data);
@@ -47,7 +46,7 @@ export default function LyricsPage({ usernameFromServer }) {
     }
   };
 
-  // ✅ Submit lyrics + audio
+  // Handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -77,6 +76,7 @@ export default function LyricsPage({ usernameFromServer }) {
       setTitle("");
       lyricsRef.current.innerText = "";
       setAudio(null);
+      setAudioPreview(null);
       setMessage("✅ Lyrics na audio byoherejwe neza!");
     } catch (error) {
       console.error("Detailed Error:", error);
@@ -84,6 +84,18 @@ export default function LyricsPage({ usernameFromServer }) {
       setErrorDetail(error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle file select & preview
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAudio(file);
+      setAudioPreview(URL.createObjectURL(file)); // <-- create preview
+    } else {
+      setAudio(null);
+      setAudioPreview(null);
     }
   };
 
@@ -114,8 +126,13 @@ export default function LyricsPage({ usernameFromServer }) {
         <input
           type="file"
           accept="audio/*"
-          onChange={(e) => setAudio(e.target.files[0])}
+          onChange={handleFileChange}
         />
+
+        {/* AUDIO PREVIEW */}
+        {audioPreview && (
+          <audio controls src={audioPreview} className="audio-preview"></audio>
+        )}
 
         {/* BUTTON */}
         <button type="submit" disabled={loading}>
@@ -162,7 +179,7 @@ export default function LyricsPage({ usernameFromServer }) {
 
         .lyrics-input {
           width: 100%;
-          min-height: 160px;
+          max-height: 160px;
           padding: 10px;
           border-radius: 10px;
           border: 1px solid #d1d5db;
@@ -183,6 +200,11 @@ export default function LyricsPage({ usernameFromServer }) {
           border: 1px solid #d1d5db;
           padding: 10px;
           border-radius: 10px;
+        }
+
+        .audio-preview {
+          margin-top: 10px;
+          width: 100%;
         }
 
         button {
