@@ -11,12 +11,12 @@ export default function LyricsPage({ usernameFromServer }) {
   const [errorDetail, setErrorDetail] = useState("");
   const lyricsRef = useRef(null);
 
-  // Upload audio kuri Cloudinary (ml_default unsigned preset)
+  // 🔼 Upload audio kuri Cloudinary (preset audiomp3)
   const uploadToCloudinary = async (file) => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("upload_preset", "ml_default"); // preset ya Cloudinary
+      formData.append("upload_preset", "audiomp3"); // preset ya Cloudinary unsigned
 
       const res = await fetch(
         "https://api.cloudinary.com/v1_1/dilowy3fd/video/upload",
@@ -27,16 +27,18 @@ export default function LyricsPage({ usernameFromServer }) {
       );
 
       const data = await res.json();
+
       if (!res.ok || !data.secure_url) {
         throw new Error(data.error?.message || "Cloudinary upload failed");
       }
+
       return data.secure_url;
     } catch (err) {
       throw new Error(`Cloudinary Error: ${err.message}`);
     }
   };
 
-  // Kubika muri Firestore
+  // 💾 Kubika muri Firestore
   const saveToFirestore = async (data) => {
     try {
       await addDoc(collection(db, "lyrics"), data);
@@ -45,7 +47,7 @@ export default function LyricsPage({ usernameFromServer }) {
     }
   };
 
-  // Submit
+  // ✅ Submit lyrics + audio
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -57,7 +59,7 @@ export default function LyricsPage({ usernameFromServer }) {
         Cookies.get("username") || usernameFromServer || "anonymous";
       const lyrics = lyricsRef.current.innerText.trim();
 
-      if (!title.trim()) throw new Error("Andika title mbere yo kubika.");
+      if (!title.trim()) throw new Error("Andika title y'indirimbo mbere yo kubika.");
       if (!lyrics) throw new Error("Andika lyrics mbere yo kubika.");
 
       let audioUrl = null;
@@ -71,7 +73,7 @@ export default function LyricsPage({ usernameFromServer }) {
         createdAt: new Date(),
       });
 
-      // Reset
+      // Reset inputs
       setTitle("");
       lyricsRef.current.innerText = "";
       setAudio(null);
@@ -90,6 +92,7 @@ export default function LyricsPage({ usernameFromServer }) {
       <h1 className="title">Upload Lyrics & Audio</h1>
 
       <form className="lyrics-form" onSubmit={handleSubmit}>
+        {/* TITLE */}
         <input
           type="text"
           value={title}
@@ -98,6 +101,7 @@ export default function LyricsPage({ usernameFromServer }) {
           className="title-input"
         />
 
+        {/* LYRICS */}
         <div
           ref={lyricsRef}
           className="lyrics-input"
@@ -106,17 +110,20 @@ export default function LyricsPage({ usernameFromServer }) {
           placeholder="Andika lyrics hano..."
         ></div>
 
+        {/* AUDIO */}
         <input
           type="file"
           accept="audio/*"
           onChange={(e) => setAudio(e.target.files[0])}
         />
 
+        {/* BUTTON */}
         <button type="submit" disabled={loading}>
           {loading ? "Uploading..." : "Bika Lyrics"}
         </button>
       </form>
 
+      {/* MESSAGES */}
       {message && <p className="message">{message}</p>}
       {errorDetail && <p className="error-detail">{errorDetail}</p>}
 
