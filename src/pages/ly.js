@@ -8,8 +8,7 @@ import {
   deleteDoc,
   doc,
 } from "firebase/firestore";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import Net from "../components/Net";
 import Cookies from "js-cookie";
 
 export default function LyDashboard({ initialData, username }) {
@@ -30,7 +29,7 @@ export default function LyDashboard({ initialData, username }) {
 
   return (
     <>
-      <Header />
+      <Net />
       <div className="dashboard-container">
         <h1>My Audio Dashboard</h1>
         {audios.length === 0 && <p>No audios found.</p>}
@@ -56,7 +55,7 @@ export default function LyDashboard({ initialData, username }) {
         ))}
       </div>
 
-      <Footer />
+  
 
       <style jsx>{`
         .dashboard-container {
