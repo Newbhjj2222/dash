@@ -1,5 +1,5 @@
 // pages/index.js
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { db } from "@/components/firebase";
 import {
   collection,
@@ -23,100 +23,91 @@ const stripHTML = (html) => (html ? html.replace(/<[^>]*>/g, "") : "");
 
 export default function Home({ initialPosts, totalPosts, totalViews, totalComments }) {
   const [posts, setPosts] = useState(initialPosts);
-  const [search, setSearch] = useState("");
-  const [openComments, setOpenComments] = useState({});
-  const [lastDoc, setLastDoc] = useState(null);
+  const [lastDoc, setLastDoc] = useState(initialPosts.length > 0 ? initialPosts[initialPosts.length - 1].docRef : null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [openComments, setOpenComments] = useState({});
+  const [search, setSearch] = useState("");
   const router = useRouter();
 
-  // 🔍 Search
   const filteredPosts = posts.filter((p) =>
     p.head.toLowerCase().includes(search.toLowerCase())
   );
 
-  // 🗑 Delete post without full refresh
+  // 🗑 Delete without reload
   const handleDelete = async (id) => {
-    if (confirm("Are you sure you want to permanently delete this post?")) {
+    if (confirm("Are you sure you want to delete this post?")) {
       await deleteDoc(doc(db, "posts", id));
       setPosts((prev) => prev.filter((p) => p.id !== id));
       alert("Post deleted successfully.");
     }
   };
 
-  const handleEdit = (id) => {
-    router.push(`/Editor?id=${id}`);
-  };
+  const handleEdit = (id) => router.push(`/Editor?id=${id}`);
 
-  // 💬 Toggle comments (load only when opened)
+  // 💬 Load comments only when opened
   const toggleComments = async (id) => {
-    setOpenComments((prev) => ({
-      ...prev,
-      [id]: !prev[id],
+    setOpenComments((prev) => ({ ...prev, [id]: !prev[id] }));
+
+    const post = posts.find((p) => p.id === id);
+    if (!post || (post.comments && post.comments.length)) return;
+
+    const commentsRef = collection(db, "posts", id, "comments");
+    const commentsSnap = await getDocs(commentsRef);
+    const comments = commentsSnap.docs.map((c) => ({
+      id: c.id,
+      author: c.data().author || "Unknown",
+      text: c.data().text || "",
     }));
 
-    // Only fetch if not loaded yet
-    if (!openComments[id]) {
-      const commentsRef = collection(db, "posts", id, "comments");
-      const commentsSnapshot = await getDocs(commentsRef);
-      const comments = commentsSnapshot.docs.map((c) => ({
-        id: c.id,
-        author: c.data().author || "Unknown",
-        text: c.data().text || "",
-      }));
-
-      setPosts((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, comments } : p))
-      );
-    }
+    setPosts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, comments } : p))
+    );
   };
 
-  // 📜 Load more posts (10 by 10)
+  // 📜 Load 10 more posts
   const loadMorePosts = async () => {
+    if (!hasMore) return;
     setLoadingMore(true);
 
     try {
       const username = document.cookie
         .split("; ")
-        .find((row) => row.startsWith("username="))
+        .find((r) => r.startsWith("username="))
         ?.split("=")[1];
-
-      if (!username) return;
 
       const postsRef = collection(db, "posts");
       const q = query(
         postsRef,
         where("author", "==", username),
         orderBy("createdAt", "desc"),
-        startAfter(lastDoc),
+        startAfter(posts[posts.length - 1].createdAt),
         limit(10)
       );
 
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) {
         setHasMore(false);
         setLoadingMore(false);
         return;
       }
 
-      const newPosts = querySnapshot.docs.map((docSnap) => {
-        const data = docSnap.data();
-        return {
-          id: docSnap.id,
-          head: data.head || "",
-          story: data.story || "",
-          category: data.categories || "",
-          image: data.imageUrl || null,
-          views: data.views || 0,
-          comments: [],
-        };
-      });
+      const newPosts = snapshot.docs.map((d) => ({
+        id: d.id,
+        head: d.data().head || "",
+        story: d.data().story || "",
+        category: d.data().categories || "",
+        image: d.data().imageUrl || null,
+        views: d.data().views || 0,
+        comments: [],
+        createdAt: d.data().createdAt,
+        docRef: d,
+      }));
 
       setPosts((prev) => [...prev, ...newPosts]);
-      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
-    } catch (error) {
-      console.error("Error loading more posts:", error);
+      setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+    } catch (err) {
+      console.error("Pagination error:", err);
     }
 
     setLoadingMore(false);
@@ -131,7 +122,7 @@ export default function Home({ initialPosts, totalPosts, totalViews, totalCommen
       <div className={styles.container}>
         <Net />
 
-        {/* Dashboard Cards */}
+        {/* DASHBOARD CARDS */}
         <div className={styles.cards}>
           <div className={styles.card}>
             <h3>Total Posts</h3>
@@ -147,7 +138,7 @@ export default function Home({ initialPosts, totalPosts, totalViews, totalCommen
           </div>
         </div>
 
-        {/* Search */}
+        {/* SEARCH */}
         <input
           type="text"
           placeholder="Search posts..."
@@ -156,7 +147,7 @@ export default function Home({ initialPosts, totalPosts, totalViews, totalCommen
           className={styles.search}
         />
 
-        {/* Posts */}
+        {/* POSTS LIST */}
         <div className={styles.postsList}>
           {filteredPosts.map((post) => (
             <div key={post.id} className={styles.postCard}>
@@ -187,15 +178,12 @@ export default function Home({ initialPosts, totalPosts, totalViews, totalCommen
                 <button className={styles.editBtn} onClick={() => handleEdit(post.id)}>
                   <FaEdit /> Edit
                 </button>
-                <button
-                  className={styles.deleteBtn}
-                  onClick={() => handleDelete(post.id)}
-                >
+                <button className={styles.deleteBtn} onClick={() => handleDelete(post.id)}>
                   <FaTrash /> Delete
                 </button>
               </div>
 
-              {/* Toggle Comments */}
+              {/* TOGGLE COMMENTS */}
               <button
                 className={styles.toggleBtn}
                 onClick={() => toggleComments(post.id)}
@@ -203,7 +191,7 @@ export default function Home({ initialPosts, totalPosts, totalViews, totalCommen
                 {openComments[post.id] ? "Hide Comments" : "Show Comments"}
               </button>
 
-              {/* Comments */}
+              {/* COMMENTS */}
               {openComments[post.id] && (
                 <div className={styles.commentsList}>
                   {post.comments?.length > 0 ? (
@@ -221,7 +209,7 @@ export default function Home({ initialPosts, totalPosts, totalViews, totalCommen
           ))}
         </div>
 
-        {/* Load More Button */}
+        {/* LOAD MORE BUTTON */}
         {hasMore && (
           <button
             className={styles.loadMoreBtn}
@@ -236,7 +224,7 @@ export default function Home({ initialPosts, totalPosts, totalViews, totalCommen
   );
 }
 
-// 🔥 SERVER SIDE: Ifata posts 10 gusa ku ikubitiro
+// SERVER SIDE (Totals + first 10)
 export async function getServerSideProps(context) {
   const cookieHeader = context.req?.headers?.cookie || "";
   const cookies = cookieHeader ? cookie.parse(cookieHeader) : {};
@@ -247,15 +235,30 @@ export async function getServerSideProps(context) {
   }
 
   const postsRef = collection(db, "posts");
-  const q = query(
+  const qAll = query(postsRef, where("author", "==", username), orderBy("createdAt", "desc"));
+  const snapshotAll = await getDocs(qAll);
+
+  const totalPosts = snapshotAll.size;
+  let totalViews = 0;
+  let totalComments = 0;
+
+  // Compute totals without fetching every comment separately
+  snapshotAll.forEach((docSnap) => {
+    const data = docSnap.data();
+    totalViews += data.views || 0;
+    totalComments += data.totalComments || 0; // store totalComments in doc for optimization
+  });
+
+  // Fetch first 10
+  const qFirst = query(
     postsRef,
     where("author", "==", username),
     orderBy("createdAt", "desc"),
     limit(10)
   );
-  const querySnapshot = await getDocs(q);
+  const firstSnapshot = await getDocs(qFirst);
 
-  const posts = querySnapshot.docs.map((docSnap) => {
+  const initialPosts = firstSnapshot.docs.map((docSnap) => {
     const data = docSnap.data();
     return {
       id: docSnap.id,
@@ -265,16 +268,15 @@ export async function getServerSideProps(context) {
       image: data.imageUrl || null,
       views: data.views || 0,
       comments: [],
+      createdAt: data.createdAt,
+      docRef: docSnap,
     };
   });
 
-  const totalViews = posts.reduce((sum, p) => sum + (p.views || 0), 0);
-  const totalComments = 0; // Comments zizaza nyuma
-
   return {
     props: {
-      initialPosts: posts,
-      totalPosts: posts.length,
+      initialPosts,
+      totalPosts,
       totalViews,
       totalComments,
     },
