@@ -1,5 +1,5 @@
 // pages/index.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { db } from "@/components/firebase";
 import {
   collection,
@@ -11,7 +11,6 @@ import {
   limit,
   doc,
   deleteDoc,
-  getCountFromServer,
 } from "firebase/firestore";
 import Head from "next/head";
 import * as cookie from "cookie";
@@ -22,42 +21,68 @@ import { FaEye, FaComments, FaEdit, FaTrash } from "react-icons/fa";
 
 const stripHTML = (html) => (html ? html.replace(/<[^>]*>/g, "") : "");
 
-export default function Home({ initialPosts, totalPosts: initialTotalPosts, totalViews: initialTotalViews, totalComments: initialTotalComments, username }) {
+export default function Home({
+  initialPosts,
+  totalPosts: initialTotalPosts,
+  totalViews: initialTotalViews,
+  username,
+}) {
   const router = useRouter();
+
   const [posts, setPosts] = useState(initialPosts);
-  const [lastDoc, setLastDoc] = useState(initialPosts.length > 0 ? initialPosts[initialPosts.length - 1].docRef : null);
+  const [lastDoc, setLastDoc] = useState(
+    initialPosts.length > 0 ? initialPosts[initialPosts.length - 1].docRef : null
+  );
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(initialPosts.length >= 10);
+
   const [openComments, setOpenComments] = useState({});
+  const [loadingComments, setLoadingComments] = useState({});
+  const [totalComments, setTotalComments] = useState(0);
+
   const [totalPosts, setTotalPosts] = useState(initialTotalPosts);
   const [totalViews, setTotalViews] = useState(initialTotalViews);
-  const [totalComments, setTotalComments] = useState(initialTotalComments);
   const [search, setSearch] = useState("");
 
-  const filteredPosts = posts.filter(p => p.head.toLowerCase().includes(search.toLowerCase()));
+  const filteredPosts = posts.filter((p) =>
+    p.head.toLowerCase().includes(search.toLowerCase())
+  );
 
-  // 🔹 Toggle comments with lazy loading
+  // 🔹 Lazy load comments for a post
   const toggleComments = async (id) => {
     const isOpen = openComments[id];
     if (isOpen) {
-      setOpenComments(prev => ({ ...prev, [id]: false }));
+      setOpenComments((prev) => ({ ...prev, [id]: false }));
       return;
     }
 
-    const post = posts.find(p => p.id === id);
+    const post = posts.find((p) => p.id === id);
     if (!post) return;
 
-    // Load comments from Firestore
-    const commentsRef = collection(db, "posts", id, "comments");
-    const commentsSnap = await getDocs(commentsRef);
-    const comments = commentsSnap.docs.map(c => ({
-      id: c.id,
-      author: c.data().author || "Unknown",
-      text: c.data().text || "",
-    }));
+    setLoadingComments((prev) => ({ ...prev, [id]: true }));
 
-    setPosts(prev => prev.map(p => p.id === id ? { ...p, comments } : p));
-    setOpenComments(prev => ({ ...prev, [id]: true }));
+    try {
+      const commentsRef = collection(db, "posts", id, "comments");
+      const commentsSnap = await getDocs(commentsRef);
+      const comments = commentsSnap.docs.map((c) => ({
+        id: c.id,
+        author: c.data().author || "Unknown",
+        text: c.data().text || "",
+      }));
+
+      // Update post comments
+      setPosts((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, comments } : p))
+      );
+
+      // Update total comments client-side
+      setTotalComments((prev) => prev + comments.length);
+    } catch (err) {
+      console.error("Error loading comments:", err);
+    }
+
+    setOpenComments((prev) => ({ ...prev, [id]: true }));
+    setLoadingComments((prev) => ({ ...prev, [id]: false }));
   };
 
   // 🔹 Delete post & update totals
@@ -65,22 +90,21 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
     if (!confirm("Are you sure you want to delete this post?")) return;
 
     try {
-      // Delete comments subcollection first
       const commentsRef = collection(db, "posts", id, "comments");
       const commentsSnap = await getDocs(commentsRef);
       for (const c of commentsSnap.docs) {
         await deleteDoc(doc(db, "posts", id, "comments", c.id));
       }
 
-      // Delete post
       await deleteDoc(doc(db, "posts", id));
 
-      // Update state and totals
-      const deletedPost = posts.find(p => p.id === id);
-      setPosts(prev => prev.filter(p => p.id !== id));
-      setTotalPosts(prev => prev - 1);
-      setTotalViews(prev => prev - (deletedPost?.views || 0));
-      setTotalComments(prev => prev - (deletedPost?.comments?.length || 0));
+      const deletedPost = posts.find((p) => p.id === id);
+      const deletedCommentsCount = deletedPost?.comments?.length || 0;
+
+      setPosts((prev) => prev.filter((p) => p.id !== id));
+      setTotalPosts((prev) => prev - 1);
+      setTotalViews((prev) => prev - (deletedPost?.views || 0));
+      setTotalComments((prev) => prev - deletedCommentsCount);
 
       alert("Post deleted successfully.");
     } catch (err) {
@@ -113,7 +137,7 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
         return;
       }
 
-      const newPosts = snapshot.docs.map(d => ({
+      const newPosts = snapshot.docs.map((d) => ({
         id: d.id,
         head: d.data().head || "",
         story: d.data().story || "",
@@ -125,7 +149,7 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
         docRef: d,
       }));
 
-      setPosts(prev => [...prev, ...newPosts]);
+      setPosts((prev) => [...prev, ...newPosts]);
       setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
       setHasMore(snapshot.docs.length === 10);
     } catch (err) {
@@ -134,6 +158,25 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
 
     setLoadingMore(false);
   };
+
+  // 🔹 Compute total comments for already loaded posts (optional, on mount)
+  useEffect(() => {
+    async function fetchTotalComments() {
+      let count = 0;
+      for (const post of posts) {
+        const commentsRef = collection(db, "posts", post.id, "comments");
+        const snap = await getDocs(commentsRef);
+        count += snap.size;
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === post.id ? { ...p, comments: snap.docs.map(c => ({id: c.id, author: c.data().author || "Unknown", text: c.data().text || ""})) } : p
+          )
+        );
+      }
+      setTotalComments(count);
+    }
+    fetchTotalComments();
+  }, []);
 
   return (
     <>
@@ -164,45 +207,75 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
           type="text"
           placeholder="Search posts..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value)}
           className={styles.search}
         />
 
         {/* POSTS LIST */}
         <div className={styles.postsList}>
-          {filteredPosts.map(post => (
+          {filteredPosts.map((post) => (
             <div key={post.id} className={styles.postCard}>
-              {post.image && <img src={post.image} alt={post.head} className={styles.postImage} loading="lazy" />}
+              {post.image && (
+                <img
+                  src={post.image}
+                  alt={post.head}
+                  className={styles.postImage}
+                  loading="lazy"
+                />
+              )}
               <h2 className={styles.postHead}>{post.head}</h2>
               <p className={styles.postSummary}>
                 {stripHTML(post.story).slice(0, 400)}
                 {post.story.length > 400 ? "..." : ""}
               </p>
+
               <p className={styles.postCategory}>
                 <strong>Category:</strong> {post.category}
               </p>
+
               <p className={styles.postStats}>
-                <FaEye /> {post.views} &nbsp;&nbsp; <FaComments /> {post.comments?.length || 0}
+                <FaEye /> {post.views} &nbsp;&nbsp;
+                <FaComments />{" "}
+                {loadingComments[post.id]
+                  ? "Loading..."
+                  : post.comments?.length || "-"}
               </p>
 
               <div className={styles.actions}>
-                <button className={styles.editBtn} onClick={() => handleEdit(post.id)}><FaEdit /> Edit</button>
-                <button className={styles.deleteBtn} onClick={() => handleDelete(post.id)}><FaTrash /> Delete</button>
+                <button
+                  className={styles.editBtn}
+                  onClick={() => handleEdit(post.id)}
+                >
+                  <FaEdit /> Edit
+                </button>
+                <button
+                  className={styles.deleteBtn}
+                  onClick={() => handleDelete(post.id)}
+                >
+                  <FaTrash /> Delete
+                </button>
               </div>
 
-              <button className={styles.toggleBtn} onClick={() => toggleComments(post.id)}>
+              <button
+                className={styles.toggleBtn}
+                onClick={() => toggleComments(post.id)}
+              >
                 {openComments[post.id] ? "Hide Comments" : "Show Comments"}
               </button>
 
               {openComments[post.id] && (
                 <div className={styles.commentsList}>
-                  {post.comments?.length > 0 ? (
-                    post.comments.map(comment => (
+                  {loadingComments[post.id] ? (
+                    <p>Loading comments...</p>
+                  ) : post.comments?.length > 0 ? (
+                    post.comments.map((comment) => (
                       <div key={comment.id} className={styles.commentCard}>
                         <strong>{comment.author}:</strong> {comment.text}
                       </div>
                     ))
-                  ) : <p className={styles.noComments}>No comments yet.</p>}
+                  ) : (
+                    <p className={styles.noComments}>No comments yet.</p>
+                  )}
                 </div>
               )}
             </div>
@@ -211,7 +284,11 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
 
         {/* LOAD MORE */}
         {hasMore && (
-          <button className={styles.loadMoreBtn} onClick={loadMorePosts} disabled={loadingMore}>
+          <button
+            className={styles.loadMoreBtn}
+            onClick={loadMorePosts}
+            disabled={loadingMore}
+          >
             {loadingMore ? "Loading..." : "Reba izindi"}
           </button>
         )}
@@ -226,38 +303,49 @@ export async function getServerSideProps(context) {
   const cookies = cookieHeader ? cookie.parse(cookieHeader) : {};
   const username = cookies.username || null;
 
-  if (!username) return { redirect: { destination: "/login", permanent: false } };
+  if (!username)
+    return { redirect: { destination: "/login", permanent: false } };
 
   const postsRef = collection(db, "posts");
-  const allSnapshot = await getDocs(query(postsRef, where("author", "==", username), orderBy("createdAt", "desc")));
 
-  let totalPosts = allSnapshot.size;
+  // Fetch all posts to compute totals (posts & views only)
+  const allSnapshot = await getDocs(
+    query(postsRef, where("author", "==", username), orderBy("createdAt", "desc"))
+  );
+
+  const totalPosts = allSnapshot.size;
   let totalViews = 0;
-  let totalComments = 0;
-
-  for (const docSnap of allSnapshot.docs) {
+  allSnapshot.forEach((docSnap) => {
     const data = docSnap.data();
     totalViews += data.views || 0;
+  });
 
-    const commentsRef = collection(db, "posts", docSnap.id, "comments");
-    const countSnap = await getCountFromServer(commentsRef);
-    totalComments += countSnap.data().count;
-  }
+  // Fetch first 10 posts
+  const firstSnapshot = await getDocs(
+    query(
+      postsRef,
+      where("author", "==", username),
+      orderBy("createdAt", "desc"),
+      limit(10)
+    )
+  );
 
-  const firstSnapshot = await getDocs(query(postsRef, where("author", "==", username), orderBy("createdAt", "desc"), limit(10)));
-  const initialPosts = firstSnapshot.docs.map(docSnap => ({
-    id: docSnap.id,
-    head: docSnap.data().head || "",
-    story: docSnap.data().story || "",
-    category: docSnap.data().categories || "",
-    image: docSnap.data().imageUrl || null,
-    views: docSnap.data().views || 0,
-    comments: [],
-    createdAt: docSnap.data().createdAt,
-    docRef: docSnap,
-  }));
+  const initialPosts = firstSnapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      head: data.head || "",
+      story: data.story || "",
+      category: data.categories || "",
+      image: data.imageUrl || null,
+      views: data.views || 0,
+      comments: [],
+      createdAt: data.createdAt,
+      docRef: docSnap,
+    };
+  });
 
   return {
-    props: { initialPosts, totalPosts, totalViews, totalComments, username },
+    props: { initialPosts, totalPosts, totalViews, username },
   };
 }
