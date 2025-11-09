@@ -1,5 +1,5 @@
 import React from "react";
-import { FaSyncAlt } from "react-icons/fa"; // icon yo kugaragaza update
+import { FaSyncAlt } from "react-icons/fa";
 import Net from "../components/Net";
 
 export default function IndexPage() {
@@ -7,10 +7,22 @@ export default function IndexPage() {
     <div style={styles.container}>
       <div style={styles.box}>
         <Net />
-        <FaSyncAlt style={styles.icon} />
+        <FaSyncAlt style={{ ...styles.icon, animation: "spin 1.5s linear infinite" }} />
         <h2 style={styles.text}>Page iri kuvugururwa...</h2>
         <p style={styles.subtext}>Irasubira online vuba 🔄</p>
       </div>
+
+      {/* CSS animation definition (safe for Next.js) */}
+      <style jsx>{`
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -40,7 +52,6 @@ const styles = {
   icon: {
     fontSize: 40,
     color: "#ffcc00",
-    animation: "spin 1.5s linear infinite",
   },
   text: {
     fontSize: "1.5rem",
@@ -52,12 +63,3 @@ const styles = {
     opacity: 0.85,
   },
 };
-
-// Animation yo kuzenguruka icon
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}`;
-document.head.appendChild(styleSheet);
