@@ -1,20 +1,13 @@
 import React, { useState } from "react";
 import { db } from "../components/firebase";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  deleteDoc,
-  doc,
-} from "firebase/firestore";
+import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import Net from "../components/Net";
 import Cookies from "js-cookie";
+import styles from "../styles/ly.module.css"; // <-- import CSS module
 
 export default function LyDashboard({ initialData, username }) {
   const [audios, setAudios] = useState(initialData);
 
-  // Delete audio
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this audio?")) return;
 
@@ -30,24 +23,24 @@ export default function LyDashboard({ initialData, username }) {
   return (
     <>
       <Net />
-      <div className="dashboard-container">
+      <div className={styles.dashboardContainer}>
         <h1>My Audio Dashboard</h1>
 
         {audios.length === 0 && <p>No audios found.</p>}
 
         {audios.map((audio) => (
-          <div key={audio.id} className="audio-card">
-            <h2 className="title">{audio.title}</h2>
-            <p className="username">By: {audio.username}</p>
-            <p className="views">Views: {audio.views || 0}</p>
-            <div className="lyrics-preview">
+          <div key={audio.id} className={styles.audioCard}>
+            <h2 className={styles.title}>{audio.title}</h2>
+            <p className={styles.username}>By: {audio.username}</p>
+            <p className={styles.views}>Views: {audio.views || 0}</p>
+            <div className={styles.lyricsPreview}>
               {audio.lyrics.length > 150
                 ? audio.lyrics.substring(0, 150) + "..."
                 : audio.lyrics}
             </div>
-            <div className="action-buttons">
+            <div className={styles.actionButtons}>
               <button
-                className="delete-btn"
+                className={styles.deleteBtn}
                 onClick={() => handleDelete(audio.id)}
               >
                 Delete
@@ -56,102 +49,21 @@ export default function LyDashboard({ initialData, username }) {
           </div>
         ))}
       </div>
-
-      <style jsx>{`
-        .dashboard-container {
-          max-width: 900px;
-          margin: 70px auto;
-          padding: 0 20px;
-        }
-
-        h1 {
-          text-align: center;
-          margin-bottom: 40px;
-        }
-
-        .audio-card {
-          background: #f3f4f6;
-          padding: 20px;
-          margin-bottom: 25px;
-          border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-          text-align: center;
-        }
-
-        .title {
-          font-size: 1.5rem;
-          font-weight: 700;
-          margin-bottom: 8px;
-        }
-
-        .username,
-        .views {
-          font-size: 0.95rem;
-          color: #6b7280;
-          margin-bottom: 10px;
-        }
-
-        .lyrics-preview {
-          font-size: 1rem;
-          color: #111827;
-          margin-bottom: 15px;
-          line-height: 1.5;
-        }
-
-        .action-buttons {
-          display: flex;
-          justify-content: center;
-        }
-
-        .delete-btn {
-          background: #dc2626;
-          color: white;
-          border: none;
-          padding: 8px 16px;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: 0.2s;
-        }
-
-        .delete-btn:hover {
-          background: #b91c1c;
-        }
-
-        @media (max-width: 600px) {
-          .audio-card {
-            padding: 15px;
-          }
-
-          .title {
-            font-size: 1.3rem;
-          }
-
-          .lyrics-preview {
-            font-size: 0.95rem;
-          }
-        }
-      `}</style>
     </>
   );
 }
 
 // SSR: fetch only audios for username in cookies
 export async function getServerSideProps(context) {
-  // Parse username from cookies
   const cookies = context.req.headers.cookie || "";
-  const usernameCookie = cookies
-    .split("; ")
-    .find((c) => c.startsWith("username="));
+  const usernameCookie = cookies.split("; ").find((c) => c.startsWith("username="));
   const username = usernameCookie
     ? decodeURIComponent(usernameCookie.split("=")[1])
     : null;
 
   if (!username) {
     return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
+      redirect: { destination: "/login", permanent: false },
     };
   }
 
@@ -168,10 +80,5 @@ export async function getServerSideProps(context) {
     console.error("Error fetching dashboard data:", error);
   }
 
-  return {
-    props: {
-      initialData,
-      username,
-    },
-  };
+  return { props: { initialData, username } };
 }
