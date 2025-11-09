@@ -1,5 +1,5 @@
 // pages/index.js
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { db } from "@/components/firebase";
 import {
   collection,
@@ -25,6 +25,7 @@ export default function Home({
   initialPosts,
   totalPosts: initialTotalPosts,
   totalViews: initialTotalViews,
+  totalComments: initialTotalComments,
   username,
 }) {
   const router = useRouter();
@@ -38,10 +39,10 @@ export default function Home({
 
   const [openComments, setOpenComments] = useState({});
   const [loadingComments, setLoadingComments] = useState({});
-  const [totalComments, setTotalComments] = useState(0);
 
   const [totalPosts, setTotalPosts] = useState(initialTotalPosts);
   const [totalViews, setTotalViews] = useState(initialTotalViews);
+  const [totalComments, setTotalComments] = useState(initialTotalComments);
   const [search, setSearch] = useState("");
 
   const filteredPosts = posts.filter((p) =>
@@ -70,13 +71,9 @@ export default function Home({
         text: c.data().text || "",
       }));
 
-      // Update post comments
       setPosts((prev) =>
         prev.map((p) => (p.id === id ? { ...p, comments } : p))
       );
-
-      // Update total comments client-side
-      setTotalComments((prev) => prev + comments.length);
     } catch (err) {
       console.error("Error loading comments:", err);
     }
@@ -158,25 +155,6 @@ export default function Home({
 
     setLoadingMore(false);
   };
-
-  // 🔹 Compute total comments for already loaded posts (optional, on mount)
-  useEffect(() => {
-    async function fetchTotalComments() {
-      let count = 0;
-      for (const post of posts) {
-        const commentsRef = collection(db, "posts", post.id, "comments");
-        const snap = await getDocs(commentsRef);
-        count += snap.size;
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === post.id ? { ...p, comments: snap.docs.map(c => ({id: c.id, author: c.data().author || "Unknown", text: c.data().text || ""})) } : p
-          )
-        );
-      }
-      setTotalComments(count);
-    }
-    fetchTotalComments();
-  }, []);
 
   return (
     <>
@@ -297,7 +275,7 @@ export default function Home({
   );
 }
 
-// SERVER-SIDE PROPS
+// SERVER-SIDE PROPS (totalComments included)
 export async function getServerSideProps(context) {
   const cookieHeader = context.req?.headers?.cookie || "";
   const cookies = cookieHeader ? cookie.parse(cookieHeader) : {};
@@ -308,17 +286,23 @@ export async function getServerSideProps(context) {
 
   const postsRef = collection(db, "posts");
 
-  // Fetch all posts to compute totals (posts & views only)
+  // Fetch all posts to compute totals (posts, views, comments)
   const allSnapshot = await getDocs(
     query(postsRef, where("author", "==", username), orderBy("createdAt", "desc"))
   );
 
   const totalPosts = allSnapshot.size;
   let totalViews = 0;
-  allSnapshot.forEach((docSnap) => {
+  let totalComments = 0;
+
+  for (const docSnap of allSnapshot.docs) {
     const data = docSnap.data();
     totalViews += data.views || 0;
-  });
+
+    const commentsRef = collection(db, "posts", docSnap.id, "comments");
+    const commentsSnap = await getDocs(commentsRef);
+    totalComments += commentsSnap.size;
+  }
 
   // Fetch first 10 posts
   const firstSnapshot = await getDocs(
@@ -339,13 +323,13 @@ export async function getServerSideProps(context) {
       category: data.categories || "",
       image: data.imageUrl || null,
       views: data.views || 0,
-      comments: [],
+      comments: [], // lazy loaded client-side
       createdAt: data.createdAt,
       docRef: docSnap,
     };
   });
 
   return {
-    props: { initialPosts, totalPosts, totalViews, username },
+    props: { initialPosts, totalPosts, totalViews, totalComments, username },
   };
 }
