@@ -1,61 +1,53 @@
-// components/Card.js
-import React, { useEffect, useState } from "react";
-import { db } from "./firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import React from "react";
+import { FaArrowUp, FaArrowDown } from "react-icons/fa";
 
-// Card ikora Client Side
-export default function Card() {
-  const [totalComments, setTotalComments] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchComments() {
-      try {
-        // Fata username muri cookies
-        const username = document.cookie
-          .split("; ")
-          .find((c) => c.startsWith("username="))
-          ?.split("=")[1];
-
-        if (!username) return;
-
-        const postsRef = collection(db, "posts");
-        const q = query(postsRef, where("author", "==", username));
-        const snapshot = await getDocs(q);
-
-        let count = 0;
-        for (const docSnap of snapshot.docs) {
-          const commentsRef = collection(db, "posts", docSnap.id, "comments");
-          const commentsSnap = await getDocs(commentsRef);
-          count += commentsSnap.size;
-        }
-
-        setTotalComments(count);
-      } catch (err) {
-        console.error("Error fetching total comments:", err);
-        setTotalComments(0);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchComments();
-  }, []);
-
+export default function NesValueCard() {
   return (
-    <div style={{
-      background: "#fff",
-      padding: "20px",
-      borderRadius: "10px",
-      boxShadow: "0 3px 10px rgba(0,0,0,0.1)",
-      textAlign: "center",
-      width: "180px",
-      margin: "10px"
-    }}>
-      <h3>Total Comments</h3>
-      <p style={{ fontSize: "24px", fontWeight: "bold", color: "#111" }}>
-        {loading ? "Loading..." : totalComments}
-      </p>
+    <div
+      style={{
+        width: "100%",
+        height: "60px",
+        borderRadius: "8px",
+        background: "linear-gradient(90deg, #6a11cb 0%, #2575fc 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-around",
+        color: "#fff",
+        fontWeight: "bold",
+        fontSize: "16px",
+        padding: "0 20px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+        animation: "pulse 2s infinite alternate",
+      }}
+    >
+      <style jsx>{`
+        @keyframes pulse {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+      `}</style>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+        <span>Value of Nes point</span>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+          <FaArrowUp />
+          <span>Now: 13 RWF / 1 Nes</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+          <FaArrowDown />
+          <span>Upcoming: 15 RWF / 1 Nes</span>
+        </div>
+      </div>
     </div>
   );
 }
