@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+// pages/index.js
+import React, { useState } from "react";
 import { db } from "@/components/firebase";
 import {
   collection,
@@ -21,7 +22,7 @@ import { FaEye, FaComments, FaEdit, FaTrash } from "react-icons/fa";
 
 const stripHTML = (html) => (html ? html.replace(/<[^>]*>/g, "") : "");
 
-export default function Home({ initialPosts, totalPosts: initialTotalPosts, totalViews: initialTotalViews, totalComments: initialTotalComments }) {
+export default function Home({ initialPosts, totalPosts: initialTotalPosts, totalViews: initialTotalViews, totalComments: initialTotalComments, username }) {
   const router = useRouter();
   const [posts, setPosts] = useState(initialPosts);
   const [lastDoc, setLastDoc] = useState(initialPosts.length > 0 ? initialPosts[initialPosts.length - 1].docRef : null);
@@ -33,19 +34,20 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
   const [totalComments, setTotalComments] = useState(initialTotalComments);
   const [search, setSearch] = useState("");
 
-  const username = typeof window !== "undefined" ? document.cookie.split("; ").find((r) => r.startsWith("username="))?.split("=")[1] : null;
+  const filteredPosts = posts.filter(p => p.head.toLowerCase().includes(search.toLowerCase()));
 
-  const filteredPosts = posts.filter((p) =>
-    p.head.toLowerCase().includes(search.toLowerCase())
-  );
-
-  // 💬 Toggle comments + lazy load
+  // 🔹 Toggle comments with lazy loading
   const toggleComments = async (id) => {
-    setOpenComments(prev => ({ ...prev, [id]: !prev[id] }));
+    const isOpen = openComments[id];
+    if (isOpen) {
+      setOpenComments(prev => ({ ...prev, [id]: false }));
+      return;
+    }
 
     const post = posts.find(p => p.id === id);
-    if (!post || (post.comments && post.comments.length)) return;
+    if (!post) return;
 
+    // Load comments from Firestore
     const commentsRef = collection(db, "posts", id, "comments");
     const commentsSnap = await getDocs(commentsRef);
     const comments = commentsSnap.docs.map(c => ({
@@ -55,24 +57,28 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
     }));
 
     setPosts(prev => prev.map(p => p.id === id ? { ...p, comments } : p));
+    setOpenComments(prev => ({ ...prev, [id]: true }));
   };
 
-  // 🗑 Delete post + comments & update totals
+  // 🔹 Delete post & update totals
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this post?")) return;
 
     try {
+      // Delete comments subcollection first
       const commentsRef = collection(db, "posts", id, "comments");
       const commentsSnap = await getDocs(commentsRef);
       for (const c of commentsSnap.docs) {
         await deleteDoc(doc(db, "posts", id, "comments", c.id));
       }
+
+      // Delete post
       await deleteDoc(doc(db, "posts", id));
 
-      setPosts(prev => prev.filter(p => p.id !== id));
-      // Update totals
-      setTotalPosts(prev => prev - 1);
+      // Update state and totals
       const deletedPost = posts.find(p => p.id === id);
+      setPosts(prev => prev.filter(p => p.id !== id));
+      setTotalPosts(prev => prev - 1);
       setTotalViews(prev => prev - (deletedPost?.views || 0));
       setTotalComments(prev => prev - (deletedPost?.comments?.length || 0));
 
@@ -85,7 +91,7 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
 
   const handleEdit = (id) => router.push(`/Editor?id=${id}`);
 
-  // 📜 Load 10 more posts
+  // 🔹 Load more posts (pagination)
   const loadMorePosts = async () => {
     if (!hasMore) return;
     setLoadingMore(true);
@@ -214,7 +220,7 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
   );
 }
 
-// SERVER SIDE
+// SERVER-SIDE PROPS
 export async function getServerSideProps(context) {
   const cookieHeader = context.req?.headers?.cookie || "";
   const cookies = cookieHeader ? cookie.parse(cookieHeader) : {};
@@ -223,15 +229,19 @@ export async function getServerSideProps(context) {
   if (!username) return { redirect: { destination: "/login", permanent: false } };
 
   const postsRef = collection(db, "posts");
-  const snapshotAll = await getDocs(query(postsRef, where("author", "==", username), orderBy("createdAt", "desc")));
-  const totalPosts = snapshotAll.size;
+  const allSnapshot = await getDocs(query(postsRef, where("author", "==", username), orderBy("createdAt", "desc")));
+
+  let totalPosts = allSnapshot.size;
   let totalViews = 0;
   let totalComments = 0;
 
-  for (const docSnap of snapshotAll.docs) {
+  for (const docSnap of allSnapshot.docs) {
     const data = docSnap.data();
     totalViews += data.views || 0;
-    totalComments += data.totalComments || 0;
+
+    const commentsRef = collection(db, "posts", docSnap.id, "comments");
+    const countSnap = await getCountFromServer(commentsRef);
+    totalComments += countSnap.data().count;
   }
 
   const firstSnapshot = await getDocs(query(postsRef, where("author", "==", username), orderBy("createdAt", "desc"), limit(10)));
@@ -248,6 +258,6 @@ export async function getServerSideProps(context) {
   }));
 
   return {
-    props: { initialPosts, totalPosts, totalViews, totalComments },
+    props: { initialPosts, totalPosts, totalViews, totalComments, username },
   };
 }
