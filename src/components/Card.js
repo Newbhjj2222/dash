@@ -12,7 +12,7 @@ export default function Card({ totalComments }) {
       borderRadius: "10px",
       boxShadow: "0 3px 10px rgba(0,0,0,0.1)",
       textAlign: "center",
-      width: "150px",
+      width: "180px",
       margin: "10px"
     }}>
       <h3>Total Comments</h3>
@@ -43,8 +43,6 @@ export async function getServerSideProps(context) {
     const commentsSnap = await getDocs(commentsRef);
     totalComments += commentsSnap.size;
   }
-
-  if (totalComments > 20) totalComments = 20;
 
   return { props: { totalComments } };
 }
