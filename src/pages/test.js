@@ -138,72 +138,101 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
   };
 
   return (
-    <>
-      <Head><title>Author Dashboard</title></Head>
-      <div className={styles.container}>
-        <Net />
-        <Card />
+  <>
+    <Head>
+      <title>Author Dashboard</title>
+    </Head>
+    <div className={styles.container}>
+      <Net />
+      <Card />
 
-        {/* CARDS */}
-        <div className={styles.cards}>
-          <div className={styles.card}>
-            <h3>Total Posts</h3>
-            <p>{totalPosts}</p>
-          </div>
-          <div className={styles.card}>
-            <h3>Total Views</h3>
-            <p>{totalViews}</p>
-          </div>
+      {/* CARDS */}
+      <div className={styles.cards}>
+        <div className={styles.card}>
+          <h3>Total Posts</h3>
+          <p>{totalPosts}</p>
         </div>
-
-        {/* SEARCH */}
-        <input
-          type="text"
-          placeholder="Search posts..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className={styles.search}
-        />
-
-        {/* POSTS LIST */}
-        <div className={styles.postsList}>
-          {filteredPosts.map(post => (
-            <div key={post.id} className={styles.postCard}>
-              {post.image && <img src={post.image} alt={post.head} className={styles.postImage} />}
-              <h2 className={styles.postHead}>{post.head}</h2>
-              <p className={styles.postSummary}>{stripHTML(post.story).slice(0,400)}{post.story.length > 400 ? "..." : ""}</p>
-              <p className={styles.postCategory}><strong>Category:</strong> {post.category}</p>
-              <p className={styles.postStats}>
-                <FaEye /> {post.views} &nbsp;&nbsp;
-                <FaComments /> {loadingComments[post.id] ? "Loading..." : post.totalComments || 0}
-              </p>
-
-              <div className={styles.actions}>
-                <button className={styles.editBtn} onClick={() => handleEdit(post.id)}><FaEdit /> Edit</button>
-                <button className={styles.deleteBtn} onClick={() => handleDelete(post.id)}><FaTrash /> Delete</button>
-              </div>
-
-              {post.commentsLoaded && post.comments.length > 0 && (
-                <div className={styles.commentsList}>
-                  {post.comments.map(c => (
-                    <div key={c.id} className={styles.commentCard}>
-                      <strong>{c.author}:</strong> {c.text}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+        <div className={styles.card}>
+          <h3>Total Views</h3>
+          <p>{totalViews}</p>
         </div>
-
-        {hasMore && (
-          <button className={styles.loadMoreBtn} onClick={loadMorePosts} disabled={loadingMore}>
-            {loadingMore ? "Loading..." : "Reba izindi"}
-          </button>
-        )}
       </div>
-    </>
-  );
+
+      {/* SEARCH */}
+      <input
+        type="text"
+        placeholder="Search posts..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className={styles.search}
+      />
+
+      {/* POSTS LIST */}
+      <div className={styles.postsList}>
+        {filteredPosts.map((post) => (
+          <div key={post.id} className={styles.postCard}>
+            {post.image && (
+              <img
+                src={post.image}
+                alt={post.head}
+                className={styles.postImage}
+              />
+            )}
+            <h2 className={styles.postHead}>{post.head}</h2>
+            <p className={styles.postSummary}>
+              {stripHTML(post.story).slice(0, 400)}
+              {post.story.length > 400 ? "..." : ""}
+            </p>
+            <p className={styles.postCategory}>
+              <strong>Category:</strong> {post.category}
+            </p>
+            <p className={styles.postStats}>
+              <FaEye /> {post.views} &nbsp;&nbsp;
+              <FaComments /> {loadingComments[post.id] ? "Loading..." : post.totalComments || 0}
+            </p>
+
+            <div className={styles.actions}>
+              <button
+                className={styles.editBtn}
+                onClick={() => handleEdit(post.id)}
+              >
+                <FaEdit /> Edit
+              </button>
+              <button
+                className={styles.deleteBtn}
+                onClick={() => handleDelete(post.id)}
+              >
+                <FaTrash /> Delete
+              </button>
+            </div>
+
+            {/* COMMENTS LIST */}
+            {post.commentsLoaded && post.comments.length > 0 && (
+              <div className={styles.commentsList}>
+                {post.comments.map((c) => (
+                  <div key={c.id} className={styles.commentCard}>
+                    <strong>{c.author}:</strong> {c.text}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* LOAD MORE */}
+      {hasMore && (
+        <button
+          className={styles.loadMoreBtn}
+          onClick={loadMorePosts}
+          disabled={loadingMore}
+        >
+          {loadingMore ? "Loading..." : "Reba izindi"}
+        </button>
+      )}
+    </div>
+  </>
+);
 }
 
 // SERVER-SIDE PROPS
