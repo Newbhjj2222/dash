@@ -146,7 +146,7 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
       <Head><title>Author Dashboard</title></Head>
       <div className={styles.container}>
         <Net />
-
+<Card />
         {/* CARDS */}
         <div className={styles.cards}>
           <div className={styles.card}>
@@ -157,7 +157,7 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
             <h3>Total Views</h3>
             <p>{totalViews}</p>
           </div>
-    <Card />
+    
     </div>
         </div>
 
