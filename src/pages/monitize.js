@@ -128,6 +128,7 @@ export default function MonitorPage() {
   };
 
   return (
+    <>
     <Net />
     <div className={styles.container}>
       <h2 className={styles.title}>Monetization Request Form</h2>
@@ -193,5 +194,6 @@ export default function MonitorPage() {
         </button>
       </form>
     </div>
+            </>
   );
 }
