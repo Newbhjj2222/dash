@@ -5,6 +5,7 @@ import styles from "../components/monitor.module.css";
 import { db } from "../components/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import emailjs from "@emailjs/browser";
+import Net from "../components/Net"; 
 
 const API_KEY = "d3b627c6d75013b8aaf2aac6de73dcb5";
 
@@ -127,6 +128,7 @@ export default function MonitorPage() {
   };
 
   return (
+    <Net />
     <div className={styles.container}>
       <h2 className={styles.title}>Monetization Request Form</h2>
 
