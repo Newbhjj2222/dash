@@ -1,10 +1,47 @@
 // components/Card.js
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { db } from "./firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import * as cookie from "cookie";
 
-export default function Card({ totalComments }) {
+// Card ikora Client Side
+export default function Card() {
+  const [totalComments, setTotalComments] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchComments() {
+      try {
+        // Fata username muri cookies
+        const username = document.cookie
+          .split("; ")
+          .find((c) => c.startsWith("username="))
+          ?.split("=")[1];
+
+        if (!username) return;
+
+        const postsRef = collection(db, "posts");
+        const q = query(postsRef, where("author", "==", username));
+        const snapshot = await getDocs(q);
+
+        let count = 0;
+        for (const docSnap of snapshot.docs) {
+          const commentsRef = collection(db, "posts", docSnap.id, "comments");
+          const commentsSnap = await getDocs(commentsRef);
+          count += commentsSnap.size;
+        }
+
+        setTotalComments(count);
+      } catch (err) {
+        console.error("Error fetching total comments:", err);
+        setTotalComments(0);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchComments();
+  }, []);
+
   return (
     <div style={{
       background: "#fff",
@@ -17,32 +54,8 @@ export default function Card({ totalComments }) {
     }}>
       <h3>Total Comments</h3>
       <p style={{ fontSize: "24px", fontWeight: "bold", color: "#111" }}>
-        {totalComments}
+        {loading ? "Loading..." : totalComments}
       </p>
     </div>
   );
-}
-
-// Fungura method yo gukoresha SSR
-export async function getServerSideProps(context) {
-  const cookieHeader = context.req?.headers?.cookie || "";
-  const cookies = cookieHeader ? cookie.parse(cookieHeader) : {};
-  const username = cookies.username || null;
-
-  if (!username) {
-    return { redirect: { destination: "/login", permanent: false } };
-  }
-
-  const postsRef = collection(db, "posts");
-  const q = query(postsRef, where("author", "==", username));
-  const snapshot = await getDocs(q);
-
-  let totalComments = 0;
-  for (const docSnap of snapshot.docs) {
-    const commentsRef = collection(db, "posts", docSnap.id, "comments");
-    const commentsSnap = await getDocs(commentsRef);
-    totalComments += commentsSnap.size;
-  }
-
-  return { props: { totalComments } };
 }
