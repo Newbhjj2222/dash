@@ -10,6 +10,7 @@ export default function NesValueCard() {
         borderRadius: "10px",
         background: "linear-gradient(90deg, #6a11cb, #2575fc)",
         display: "flex",
+        margin: "10px",
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
