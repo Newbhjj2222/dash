@@ -5,8 +5,9 @@ import Net from "../components/Net";
 export default function IndexPage() {
   return (
     <div style={styles.container}>
+    <Net />
       <div style={styles.box}>
-        <Net />
+        
         <FaSyncAlt style={{ ...styles.icon, animation: "spin 1.5s linear infinite" }} />
         <h2 style={styles.text}>Page iri kuvugururwa...</h2>
         <p style={styles.subtext}>Irasubira online vuba 🔄</p>
