@@ -1,3 +1,4 @@
+// pages/index.js
 import React, { useState, useEffect } from "react";
 import { db } from "@/components/firebase";
 import {
@@ -6,6 +7,8 @@ import {
   query,
   where,
   orderBy,
+  startAfter,
+  limit,
   doc,
   deleteDoc,
 } from "firebase/firestore";
@@ -14,23 +17,30 @@ import * as cookie from "cookie";
 import styles from "@/styles/index.module.css";
 import { useRouter } from "next/router";
 import Net from "../components/Net";
+import { FaEye, FaComments, FaEdit, FaTrash } from "react-icons/fa";
+
 const stripHTML = (html) => (html ? html.replace(/<[^>]*>/g, "") : "");
 
 export default function Home({ initialPosts, totalPosts, totalViews, totalComments }) {
+  const [posts, setPosts] = useState(initialPosts);
   const [search, setSearch] = useState("");
-  const [filteredPosts, setFilteredPosts] = useState(initialPosts);
   const [openComments, setOpenComments] = useState({});
+  const [lastDoc, setLastDoc] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const router = useRouter();
 
-  const toggleComments = (id) => {
-    setOpenComments((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
+  // 🔍 Search
+  const filteredPosts = posts.filter((p) =>
+    p.head.toLowerCase().includes(search.toLowerCase())
+  );
 
+  // 🗑 Delete post without full refresh
   const handleDelete = async (id) => {
     if (confirm("Are you sure you want to permanently delete this post?")) {
       await deleteDoc(doc(db, "posts", id));
+      setPosts((prev) => prev.filter((p) => p.id !== id));
       alert("Post deleted successfully.");
-      router.replace(router.asPath); // refresh
     }
   };
 
@@ -38,26 +48,90 @@ export default function Home({ initialPosts, totalPosts, totalViews, totalCommen
     router.push(`/Editor?id=${id}`);
   };
 
-  useEffect(() => {
-    const filtered = initialPosts.filter((post) =>
-      post.head.toLowerCase().includes(search.toLowerCase())
-    );
-    setFilteredPosts(filtered);
-  }, [search, initialPosts]);
+  // 💬 Toggle comments (load only when opened)
+  const toggleComments = async (id) => {
+    setOpenComments((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+
+    // Only fetch if not loaded yet
+    if (!openComments[id]) {
+      const commentsRef = collection(db, "posts", id, "comments");
+      const commentsSnapshot = await getDocs(commentsRef);
+      const comments = commentsSnapshot.docs.map((c) => ({
+        id: c.id,
+        author: c.data().author || "Unknown",
+        text: c.data().text || "",
+      }));
+
+      setPosts((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, comments } : p))
+      );
+    }
+  };
+
+  // 📜 Load more posts (10 by 10)
+  const loadMorePosts = async () => {
+    setLoadingMore(true);
+
+    try {
+      const username = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("username="))
+        ?.split("=")[1];
+
+      if (!username) return;
+
+      const postsRef = collection(db, "posts");
+      const q = query(
+        postsRef,
+        where("author", "==", username),
+        orderBy("createdAt", "desc"),
+        startAfter(lastDoc),
+        limit(10)
+      );
+
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        setHasMore(false);
+        setLoadingMore(false);
+        return;
+      }
+
+      const newPosts = querySnapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          head: data.head || "",
+          story: data.story || "",
+          category: data.categories || "",
+          image: data.imageUrl || null,
+          views: data.views || 0,
+          comments: [],
+        };
+      });
+
+      setPosts((prev) => [...prev, ...newPosts]);
+      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
+    } catch (error) {
+      console.error("Error loading more posts:", error);
+    }
+
+    setLoadingMore(false);
+  };
 
   return (
     <>
       <Head>
         <title>Author Dashboard</title>
-        <link
-          rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-        />
       </Head>
 
       <div className={styles.container}>
-            <Net />
-        {/* Dashboard cards */}
+        <Net />
+
+        {/* Dashboard Cards */}
         <div className={styles.cards}>
           <div className={styles.card}>
             <h3>Total Posts</h3>
@@ -87,32 +161,41 @@ export default function Home({ initialPosts, totalPosts, totalViews, totalCommen
           {filteredPosts.map((post) => (
             <div key={post.id} className={styles.postCard}>
               {post.image && (
-                <img src={post.image} alt={post.head} className={styles.postImage} />
+                <img
+                  src={post.image}
+                  alt={post.head}
+                  className={styles.postImage}
+                  loading="lazy"
+                />
               )}
               <h2 className={styles.postHead}>{post.head}</h2>
               <p className={styles.postSummary}>
                 {stripHTML(post.story).slice(0, 400)}
                 {post.story.length > 400 ? "..." : ""}
               </p>
+
               <p className={styles.postCategory}>
                 <strong>Category:</strong> {post.category}
               </p>
 
               <p className={styles.postStats}>
-                <i className="fas fa-eye"></i> {post.views} &nbsp;&nbsp;
-                <i className="fas fa-comments"></i> {post.comments.length}
+                <FaEye /> {post.views} &nbsp;&nbsp;
+                <FaComments /> {post.comments?.length || 0}
               </p>
 
               <div className={styles.actions}>
                 <button className={styles.editBtn} onClick={() => handleEdit(post.id)}>
-                  <i className="fas fa-edit"></i> Edit
+                  <FaEdit /> Edit
                 </button>
-                <button className={styles.deleteBtn} onClick={() => handleDelete(post.id)}>
-                  <i className="fas fa-trash"></i> Delete
+                <button
+                  className={styles.deleteBtn}
+                  onClick={() => handleDelete(post.id)}
+                >
+                  <FaTrash /> Delete
                 </button>
               </div>
 
-              {/* Toggle Comments Button */}
+              {/* Toggle Comments */}
               <button
                 className={styles.toggleBtn}
                 onClick={() => toggleComments(post.id)}
@@ -123,7 +206,7 @@ export default function Home({ initialPosts, totalPosts, totalViews, totalCommen
               {/* Comments */}
               {openComments[post.id] && (
                 <div className={styles.commentsList}>
-                  {post.comments.length > 0 ? (
+                  {post.comments?.length > 0 ? (
                     post.comments.map((comment) => (
                       <div key={comment.id} className={styles.commentCard}>
                         <strong>{comment.author}:</strong> {comment.text}
@@ -137,52 +220,56 @@ export default function Home({ initialPosts, totalPosts, totalViews, totalCommen
             </div>
           ))}
         </div>
+
+        {/* Load More Button */}
+        {hasMore && (
+          <button
+            className={styles.loadMoreBtn}
+            onClick={loadMorePosts}
+            disabled={loadingMore}
+          >
+            {loadingMore ? "Loading..." : "Reba izindi"}
+          </button>
+        )}
       </div>
     </>
   );
 }
 
+// 🔥 SERVER SIDE: Ifata posts 10 gusa ku ikubitiro
 export async function getServerSideProps(context) {
   const cookieHeader = context.req?.headers?.cookie || "";
   const cookies = cookieHeader ? cookie.parse(cookieHeader) : {};
   const username = cookies.username || null;
 
   if (!username) {
-    return {
-      redirect: { destination: "/login", permanent: false },
-    };
+    return { redirect: { destination: "/login", permanent: false } };
   }
 
   const postsRef = collection(db, "posts");
-  const q = query(postsRef, where("author", "==", username), orderBy("createdAt", "desc"));
+  const q = query(
+    postsRef,
+    where("author", "==", username),
+    orderBy("createdAt", "desc"),
+    limit(10)
+  );
   const querySnapshot = await getDocs(q);
 
-  const posts = await Promise.all(
-    querySnapshot.docs.map(async (docSnap) => {
-      const data = docSnap.data();
-      const commentsRef = collection(db, "posts", docSnap.id, "comments");
-      const commentsSnapshot = await getDocs(commentsRef);
-
-      const comments = commentsSnapshot.docs.map((c) => ({
-        id: c.id,
-        author: c.data().author || "Unknown",
-        text: c.data().text || "",
-      }));
-
-      return {
-        id: docSnap.id,
-        head: data.head || "",
-        story: data.story || "",
-        category: data.categories || "",
-        image: data.imageUrl || null,
-        views: data.views || 0,
-        comments,
-      };
-    })
-  );
+  const posts = querySnapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      head: data.head || "",
+      story: data.story || "",
+      category: data.categories || "",
+      image: data.imageUrl || null,
+      views: data.views || 0,
+      comments: [],
+    };
+  });
 
   const totalViews = posts.reduce((sum, p) => sum + (p.views || 0), 0);
-  const totalComments = posts.reduce((sum, p) => sum + p.comments.length, 0);
+  const totalComments = 0; // Comments zizaza nyuma
 
   return {
     props: {
