@@ -24,12 +24,10 @@ const stripHTML = (html) => (html ? html.replace(/<[^>]*>/g, "") : "");
 
 export default function Home({ initialPosts, totalPosts: initialTotalPosts, totalViews: initialTotalViews, username }) {
   const router = useRouter();
-
   const [posts, setPosts] = useState(initialPosts);
   const [lastDoc, setLastDoc] = useState(initialPosts.length > 0 ? initialPosts[initialPosts.length - 1].docRef : null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(initialPosts.length >= 10);
-
   const [loadingComments, setLoadingComments] = useState({});
   const [totalPosts, setTotalPosts] = useState(initialTotalPosts);
   const [totalViews, setTotalViews] = useState(initialTotalViews);
@@ -37,10 +35,10 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
 
   const filteredPosts = posts.filter(p => p.head.toLowerCase().includes(search.toLowerCase()));
 
-  // 🔹 Lazy load comments automatically on post render
+  // Lazy load comments automatically
   useEffect(() => {
     posts.forEach(post => {
-      if (post.commentsLoaded) return; // skip if already loaded
+      if (post.commentsLoaded) return;
 
       setLoadingComments(prev => ({ ...prev, [post.id]: true }));
 
@@ -77,9 +75,7 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
       }
 
       await deleteDoc(doc(db, "posts", id));
-
-      const deletedPost = posts.find((p) => p.id === id);
-
+      const deletedPost = posts.find(p => p.id === id);
       setPosts(prev => prev.filter(p => p.id !== id));
       setTotalPosts(prev => prev - 1);
       setTotalViews(prev => prev - (deletedPost?.views || 0));
@@ -146,7 +142,8 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
       <Head><title>Author Dashboard</title></Head>
       <div className={styles.container}>
         <Net />
-<Card />
+        <Card />
+
         {/* CARDS */}
         <div className={styles.cards}>
           <div className={styles.card}>
@@ -157,8 +154,6 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
             <h3>Total Views</h3>
             <p>{totalViews}</p>
           </div>
-    
-    </div>
         </div>
 
         {/* SEARCH */}
@@ -176,9 +171,7 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
             <div key={post.id} className={styles.postCard}>
               {post.image && <img src={post.image} alt={post.head} className={styles.postImage} />}
               <h2 className={styles.postHead}>{post.head}</h2>
-              <p className={styles.postSummary}>
-                {stripHTML(post.story).slice(0, 400)}{post.story.length > 400 ? "..." : ""}
-              </p>
+              <p className={styles.postSummary}>{stripHTML(post.story).slice(0,400)}{post.story.length > 400 ? "..." : ""}</p>
               <p className={styles.postCategory}><strong>Category:</strong> {post.category}</p>
               <p className={styles.postStats}>
                 <FaEye /> {post.views} &nbsp;&nbsp;
@@ -190,7 +183,6 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
                 <button className={styles.deleteBtn} onClick={() => handleDelete(post.id)}><FaTrash /> Delete</button>
               </div>
 
-              {/* COMMENTS LIST */}
               {post.commentsLoaded && post.comments.length > 0 && (
                 <div className={styles.commentsList}>
                   {post.comments.map(c => (
@@ -224,10 +216,7 @@ export async function getServerSideProps(context) {
 
   const postsRef = collection(db, "posts");
 
-  // Fetch first 10 posts only
-  const firstSnapshot = await getDocs(
-    query(postsRef, where("author", "==", username), orderBy("createdAt", "desc"), limit(10))
-  );
+  const firstSnapshot = await getDocs(query(postsRef, where("author", "==", username), orderBy("createdAt", "desc"), limit(10)));
 
   const initialPosts = firstSnapshot.docs.map(docSnap => {
     const data = docSnap.data();
@@ -246,7 +235,6 @@ export async function getServerSideProps(context) {
     };
   });
 
-  // Compute totals
   const allSnapshot = await getDocs(query(postsRef, where("author", "==", username)));
   const totalPosts = allSnapshot.size;
   let totalViews = 0;
