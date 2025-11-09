@@ -17,7 +17,7 @@ import * as cookie from "cookie";
 import styles from "@/styles/index.module.css";
 import { useRouter } from "next/router";
 import Net from "../components/Net";
-import Card, { getServerSideProps as getComments } from "@/components/Card";
+import Card from "@/components/Card";
 import { FaEye, FaComments, FaEdit, FaTrash } from "react-icons/fa";
 
 const stripHTML = (html) => (html ? html.replace(/<[^>]*>/g, "") : "");
@@ -157,8 +157,7 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
             <h3>Total Views</h3>
             <p>{totalViews}</p>
           </div>
-    <div style={{ display: "flex", justifyContent: "center", marginTop: "50px" }}>
-      <Card totalComments={totalComments} />
+    <Card />
     </div>
         </div>
 
