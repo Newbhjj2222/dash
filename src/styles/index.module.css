@@ -251,7 +251,21 @@
   text-align: center;
   margin-top: 5px;
 }
-
+.loadMoreBtn {
+  margin: 20px auto;
+  display: block;
+  background-color: #0070f3;
+  color: white;
+  padding: 10px 25px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s ease;
+}
+.loadMoreBtn:hover {
+  background-color: #0059c9;
+}
 /* ---------------------- */
 /* Responsive             */
 /* ---------------------- */
