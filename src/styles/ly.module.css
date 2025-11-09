@@ -1,0 +1,74 @@
+/* styles/ly.module.css */
+
+.dashboardContainer {
+  max-width: 900px;
+  margin: 70px auto;
+  padding: 0 20px;
+}
+
+.dashboardContainer h1 {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.audioCard {
+  background: #f3f4f6;
+  padding: 20px;
+  margin-bottom: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.username,
+.views {
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+
+.lyricsPreview {
+  font-size: 1rem;
+  color: #111827;
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.actionButtons {
+  display: flex;
+  justify-content: center;
+}
+
+.deleteBtn {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.deleteBtn:hover {
+  background: #b91c1c;
+}
+
+@media (max-width: 600px) {
+  .audioCard {
+    padding: 15px;
+  }
+
+  .title {
+    font-size: 1.3rem;
+  }
+
+  .lyricsPreview {
+    font-size: 0.95rem;
+  }
+}
