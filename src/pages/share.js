@@ -5,6 +5,7 @@ import styles from "@/styles/share.module.css";
 import { db } from "@/components/firebase";
 import { collection, getDocs, query, where, doc, updateDoc, increment, setDoc, getDoc } from "firebase/firestore";
 import Cookies from "js-cookie";
+import Net from "@/components/Net";
 
 export default function SharePage({ postsData = [], username = "", initialSharesCounts = {}, initialTotalShares = 0 }) {
   const [sharesCount, setSharesCount] = useState(initialSharesCounts || {});
@@ -80,6 +81,7 @@ export default function SharePage({ postsData = [], username = "", initialShares
 
   return (
     <>
+    <Net />
       <div className={styles.pageWrap}>
         {messageVisible && (
           <div className={styles.topMessage} role="status" aria-live="polite">
