@@ -122,7 +122,7 @@ export default function SharePage({ postsData = [], username = "", initialShares
                         target="_blank"
                         rel="noreferrer"
                       >
-                        View
+                        Shares
                       </a>
                     </div>
                   </div>
