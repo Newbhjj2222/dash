@@ -17,14 +17,25 @@ import {
 } from "firebase/firestore";
 import Cookies from "js-cookie";
 
-export default function SharePage({ postsData, username, initialSharesCounts, initialTotalShares }) {
+export default function SharePage({ postsData = [], username = "", initialSharesCounts = {}, initialTotalShares = 0 }) {
   const [sharesCount, setSharesCount] = useState(initialSharesCounts || {});
   const [totalShares, setTotalShares] = useState(initialTotalShares || 0);
   const [message, setMessage] = useState("");
   const [messageVisible, setMessageVisible] = useState(false);
 
+  useEffect(() => {
+    // If client-side cookie changes (e.g. login), sync username (optional)
+    const clientUser = Cookies.get("username");
+    // no-op for now
+  }, []);
+
   const handleShare = async (postId, summary) => {
-    if (!username) return;
+    if (!username) {
+      setMessage("No username found. Please login.");
+      setMessageVisible(true);
+      setTimeout(() => setMessageVisible(false), 4000);
+      return;
+    }
 
     const shareDocRef = doc(db, "shares", username);
 
@@ -33,9 +44,11 @@ export default function SharePage({ postsData, username, initialSharesCounts, in
         [postId]: increment(1)
       });
     } catch (err) {
+      // create if not exists (merge to avoid overwriting)
       await setDoc(shareDocRef, { [postId]: 1 }, { merge: true });
     }
 
+    // optimistic UI update
     setSharesCount((prev) => {
       const next = { ...prev, [postId]: prev[postId] ? prev[postId] + 1 : 1 };
       return next;
@@ -44,6 +57,7 @@ export default function SharePage({ postsData, username, initialSharesCounts, in
 
     const shareLink = `https://www.newtalentsg.co.rw/post/${postId}`;
 
+    // copy to clipboard (with fallback)
     try {
       await navigator.clipboard.writeText(shareLink);
     } catch (e) {
@@ -55,10 +69,13 @@ export default function SharePage({ postsData, username, initialSharesCounts, in
       ta.remove();
     }
 
-    const display = `Link copied: ${shareLink}\n\nSummary: ${summary}`;
+    // show top message with link + summary
+    const trimmed = summary || "";
+    const display = `Link copied: ${shareLink}\n\nSummary: ${trimmed}`;
     setMessage(display);
     setMessageVisible(true);
 
+    // hide after 6s
     setTimeout(() => {
       setMessageVisible(false);
       setMessage("");
@@ -71,60 +88,59 @@ export default function SharePage({ postsData, username, initialSharesCounts, in
 
       <div className={styles.pageWrap}>
         {messageVisible && (
-          <div className={styles.topMessage} role="status">
+          <div className={styles.topMessage} role="status" aria-live="polite">
             <pre className={styles.messagePre}>{message}</pre>
           </div>
         )}
 
-        <div className={styles.container}>
+        <main className={styles.container}>
           <div className={styles.headerRow}>
             <h1 className={styles.title}>Share your posts</h1>
 
-            <div className={styles.totalCard}>
+            <div className={styles.totalCard} aria-hidden={false}>
               <div className={styles.totalLabel}>Total shares by you</div>
               <div className={styles.totalNumber}>{totalShares}</div>
             </div>
           </div>
 
-          {postsData.length === 0 && (
-            <p className={styles.noPosts}>No posts found for {username}</p>
-          )}
+          {postsData.length === 0 ? (
+            <p className={styles.noPosts}>No posts found for <strong>{username}</strong></p>
+          ) : (
+            <ul className={styles.list}>
+              {postsData.map((post) => (
+                <li key={post.id} className={styles.item}>
+                  <div className={styles.postInfo}>
+                    <h3 className={styles.postHead}>{post.head}</h3>
+                    <p className={styles.postSummary}>{post.storySummary}</p>
 
-          <ul className={styles.list}>
-            {postsData.map((post) => (
-              <li key={post.id} className={styles.item}>
-                <div className={styles.postInfo}>
-                  <h3 className={styles.postHead}>{post.head}</h3>
-                  <p className={styles.postSummary}>{post.storySummary}</p>
+                    <div className={styles.metaRow}>
+                      <span className={styles.shareCount}>Shares: {sharesCount[post.id] || 0}</span>
 
-                  <div className={styles.metaRow}>
-                    <span className={styles.shareCount}>
-                      Shares: {sharesCount[post.id] || 0}
-                    </span>
-
-                    <a
-                      className={styles.viewLink}
-                      href={`https://www.newtalentsg.co.rw/post/${post.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      View
-                    </a>
+                      <a
+                        className={styles.viewLink}
+                        href={`https://www.newtalentsg.co.rw/post/${post.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View
+                      </a>
+                    </div>
                   </div>
-                </div>
 
-                <div className={styles.actions}>
-                  <button
-                    onClick={() => handleShare(post.id, post.storySummary)}
-                    className={styles.button}
-                  >
-                    Copy Link
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+                  <div className={styles.actions}>
+                    <button
+                      onClick={() => handleShare(post.id, post.storySummary)}
+                      className={styles.button}
+                      aria-label={`Copy link for ${post.head}`}
+                    >
+                      Copy Link
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </main>
       </div>
     </>
   );
@@ -133,7 +149,6 @@ export default function SharePage({ postsData, username, initialSharesCounts, in
 // ================================
 // SSR SECTION
 // ================================
-
 export async function getServerSideProps(context) {
   const cookie = context.req.headers.cookie || "";
   const usernameMatch = cookie.match(/username=([^;]+)/);
@@ -145,53 +160,73 @@ export async function getServerSideProps(context) {
     };
   }
 
+  // Fetch posts authored by username (no orderBy used server-side because createdAt formats vary)
   const postsRef = collection(db, "posts");
   const q = query(postsRef, where("author", "==", username));
   const querySnapshot = await getDocs(q);
 
-  // Clean summary function
+  // Helper: remove HTML tags and trim to 300 chars
   const stripHtml = (html) => {
     if (!html) return "";
-    const text = String(html)
-      .replace(/<[^>]*>/g, " ") 
-      .replace(/\s+/g, " ")
-      .trim();
-
-    return text.length <= 300 ? text : text.slice(0, 300).trim() + "...";
+    const text = String(html).replace(/<[^>]*>/g, " ");
+    const collapsed = text.replace(/\s+/g, " ").trim();
+    return collapsed.length <= 300 ? collapsed : collapsed.slice(0, 300).trim() + "...";
   };
 
+  // Helper: convert various date formats to ms for sorting
+  const toMs = (dateValue) => {
+    if (!dateValue) return 0;
+
+    // Firestore Timestamp-like object
+    if (typeof dateValue === "object" && dateValue !== null && "seconds" in dateValue) {
+      return (dateValue.seconds || 0) * 1000 + (dateValue.nanoseconds ? Math.floor(dateValue.nanoseconds / 1e6) : 0);
+    }
+
+    // ISO string or other string
+    if (typeof dateValue === "string") {
+      const ms = new Date(dateValue).getTime();
+      return isNaN(ms) ? 0 : ms;
+    }
+
+    // number (ms or seconds)
+    if (typeof dateValue === "number") {
+      // if looks like seconds (10 digits), convert to ms
+      if (dateValue < 1e12) return dateValue * 1000;
+      return dateValue;
+    }
+
+    return 0;
+  };
+
+  // Build postsData array
   let postsData = querySnapshot.docs.map((d) => {
     const data = d.data();
     return {
       id: d.id,
       head: data.head || data.title || "Untitled",
-      createdAt: data.createdAt || null,
-      storySummary: stripHtml(data.story)
+      storySummary: stripHtml(data.story),
+      createdAt: data.createdAt || data.created_at || data.date || null
     };
   });
 
-  // 🔥 SORT POSTS BY NEWEST (createdAt)
-  postsData.sort((a, b) => {
-    if (!a.createdAt || !b.createdAt) return 0;
-    return b.createdAt.seconds - a.createdAt.seconds;
-  });
+  // Sort newest first using universal converter
+  postsData.sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt));
 
-  // Load shares doc
+  // Fetch shares doc for this user to get counts and total
   const sharesRef = doc(db, "shares", username);
   let initialSharesCounts = {};
   let initialTotalShares = 0;
-
   try {
     const sharesSnap = await getDoc(sharesRef);
     if (sharesSnap.exists()) {
       initialSharesCounts = sharesSnap.data() || {};
-
-      initialTotalShares = Object.values(initialSharesCounts).reduce(
-        (acc, val) => acc + (typeof val === "number" ? val : parseInt(val, 10) || 0),
-        0
-      );
+      initialTotalShares = Object.values(initialSharesCounts).reduce((acc, val) => {
+        const n = typeof val === "number" ? val : parseInt(val, 10) || 0;
+        return acc + n;
+      }, 0);
     }
   } catch (err) {
+    // ignore and default to zeros
     initialSharesCounts = {};
     initialTotalShares = 0;
   }
