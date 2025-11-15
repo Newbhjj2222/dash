@@ -1,7 +1,10 @@
-import styles from "../styles/share.module.css";
+'use client';
+
+import React from "react";
+import styles from "@/styles/share.module.css";
+import { db } from "@/components/firebase";
 import { collection, getDocs, query, where, doc, updateDoc, increment, setDoc } from "firebase/firestore";
-import { db } from "../components/firebase";
-import Cookies from "cookies";
+import Cookies from "js-cookie";
 
 export default function SharePage({ posts, username }) {
 
@@ -14,9 +17,8 @@ export default function SharePage({ posts, username }) {
         [postId]: increment(1)
       });
     } catch (err) {
-      await setDoc(shareDocRef, {
-        [postId]: 1
-      });
+      // Niba document itabaho, tureme
+      await setDoc(shareDocRef, { [postId]: 1 });
     }
 
     const shareLink = `https://www.newtalentsg.co.rw/post/${postId}`;
@@ -25,51 +27,46 @@ export default function SharePage({ posts, username }) {
   };
 
   return (
-    <>
-      <head>
-        <title>Share your posts | {username}</title>
-        <meta name="description" content={`Share your posts on New Talents. ${posts.length} posts available.`} />
-      </head>
-      <div className={styles.container}>
-        <h1>Share your posts</h1>
-        {posts.length === 0 && <p>No posts found for {username}</p>}
-        <ul className={styles.list}>
-          {posts.map((post) => (
-            <li key={post.id} className={styles.item}>
-              <span>{post.title}</span>
-              <button onClick={() => handleShare(post.id)} className={styles.button}>
-                Share
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </>
+    <div className={styles.container}>
+      <h1>Share your posts</h1>
+      {posts.length === 0 && <p>No posts found for {username}</p>}
+      <ul className={styles.list}>
+        {posts.map((post) => (
+          <li key={post.id} className={styles.item}>
+            <span>{post.title}</span>
+            <button onClick={() => handleShare(post.id)} className={styles.button}>
+              Share
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
-// SSR
-export async function getServerSideProps({ req, res }) {
-  const cookies = new Cookies(req, res);
-  const username = cookies.get("username") || "";
+// SSR: fata username muri cookies uhereye muri request headers
+export async function getServerSideProps(context) {
+  const cookie = context.req.headers.cookie || "";
+  const usernameMatch = cookie.match(/username=([^;]+)/);
+  const username = usernameMatch ? usernameMatch[1] : null;
 
-  let posts = [];
-
-  if (username) {
-    const postsRef = collection(db, "posts");
-    const q = query(postsRef, where("author", "==", username));
-    const querySnapshot = await getDocs(q);
-
-    posts = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+  if (!username) {
+    return {
+      redirect: { destination: "/login", permanent: false },
+    };
   }
 
+  // Fetch inkuru z'umwanditsi
+  const postsRef = collection(db, "posts");
+  const q = query(postsRef, where("author", "==", username));
+  const querySnapshot = await getDocs(q);
+
+  const posts = querySnapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+
   return {
-    props: {
-      posts,
-      username,
-    },
+    props: { posts, username },
   };
 }
