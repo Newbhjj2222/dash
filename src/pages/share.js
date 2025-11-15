@@ -1,17 +1,31 @@
 'use client';
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import styles from "@/styles/share.module.css";
 import { db } from "@/components/firebase";
-import { collection, getDocs, query, where, doc, updateDoc, increment, setDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, updateDoc, increment, setDoc, getDoc } from "firebase/firestore";
 import Cookies from "js-cookie";
 
-export default function SharePage({ posts, username }) {
+export default function SharePage({ postsData, username }) {
+  const [sharesCount, setSharesCount] = useState({});
+
+  useEffect(() => {
+    // Fetch shares count muri Firestore
+    const fetchShares = async () => {
+      const sharesRef = doc(db, "shares", username);
+      const sharesSnap = await getDoc(sharesRef);
+      if (sharesSnap.exists()) {
+        setSharesCount(sharesSnap.data());
+      }
+    };
+    fetchShares();
+  }, [username]);
 
   const handleShare = async (postId) => {
     if (!username) return;
 
     const shareDocRef = doc(db, "shares", username);
+
     try {
       await updateDoc(shareDocRef, {
         [postId]: increment(1)
@@ -21,6 +35,13 @@ export default function SharePage({ posts, username }) {
       await setDoc(shareDocRef, { [postId]: 1 });
     }
 
+    // Update state y'uburyo instant
+    setSharesCount((prev) => ({
+      ...prev,
+      [postId]: prev[postId] ? prev[postId] + 1 : 1
+    }));
+
+    // Copy link muri clipboard
     const shareLink = `https://www.newtalentsg.co.rw/post/${postId}`;
     navigator.clipboard.writeText(shareLink);
     alert("Link copied: " + shareLink);
@@ -29,13 +50,16 @@ export default function SharePage({ posts, username }) {
   return (
     <div className={styles.container}>
       <h1>Share your posts</h1>
-      {posts.length === 0 && <p>No posts found for {username}</p>}
+      {postsData.length === 0 && <p>No posts found for {username}</p>}
       <ul className={styles.list}>
-        {posts.map((post) => (
+        {postsData.map((post) => (
           <li key={post.id} className={styles.item}>
-            <span>{post.title}</span>
+            <div>
+              <h3>{post.head}</h3> {/* Erekana head/title */}
+              <p>Shares: {sharesCount[post.id] || 0}</p>
+            </div>
             <button onClick={() => handleShare(post.id)} className={styles.button}>
-              Share
+              Copy Link
             </button>
           </li>
         ))}
@@ -44,7 +68,7 @@ export default function SharePage({ posts, username }) {
   );
 }
 
-// SSR: fata username muri cookies uhereye muri request headers
+// SSR
 export async function getServerSideProps(context) {
   const cookie = context.req.headers.cookie || "";
   const usernameMatch = cookie.match(/username=([^;]+)/);
@@ -61,12 +85,12 @@ export async function getServerSideProps(context) {
   const q = query(postsRef, where("author", "==", username));
   const querySnapshot = await getDocs(q);
 
-  const posts = querySnapshot.docs.map((doc) => ({
+  const postsData = querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    head: doc.data().head || doc.data().title || "Untitled"
   }));
 
   return {
-    props: { posts, username },
+    props: { postsData, username },
   };
 }
