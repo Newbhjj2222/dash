@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { FaUser, FaUsers, FaEye, FaShare } from "react-icons/fa";
+import { FaUser, FaUsers, FaEye, FaShare, FaCheckCircle } from "react-icons/fa";
+import Net from "../components/Net";
 import { db } from "../components/firebase";
 import { collection, getDocs, doc, getDoc, query, where } from "firebase/firestore";
 
-export default function Netinf({ username, stats, score }) {
+export default function NetInf({ username, stats, score }) {
   const [level, setLevel] = useState("low");
   const [progress, setProgress] = useState(0);
 
@@ -37,46 +38,65 @@ export default function Netinf({ username, stats, score }) {
     return {};
   };
 
+  // ---------------- Checklist items ----------------
+  const checklist = [
+    { text: "Kuba amaze kwandika inkuru zifite views 500 byibura", done: stats.views >= 500 },
+    { text: "Kugira referral growth ≥30", done: stats.referrals >= 30 },
+    { text: "Kwagura audience (total shares ≥300)", done: stats.shares >= 300 },
+    { text: "Kuba inyangamugayo mu mikorere (kugendera ku mategeko ya New Talents)", done: true },
+    { text: "Guhora utera imbere (update ibikorwa byawe, inkuru nshya)", done: true },
+  ];
+
   return (
-    <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-        <FaUser size={32} />
-        <h1>User Level</h1>
-        <span style={{
-          padding: "0.3rem 0.8rem",
-          borderRadius: "12px",
-          color: "#fff",
-          fontWeight: "bold",
-          ...getBadgeStyle()
-        }}>
-          {level.toUpperCase()}
-        </span>
-      </div>
+    <div>
+      <Net />
+      <div style={{ padding: "2rem", fontFamily: "sans-serif", maxWidth: "800px", margin: "0 auto" }}>
+        <h1 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <FaUser /> {username} - Net Influencer Level
+        </h1>
 
-      <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-        <div><FaEye /> Views: {stats.views}</div>
-        <div><FaUsers /> Referrals: {stats.referrals}</div>
-        <div><FaUser /> Comments: {stats.hasComments ? "Yes" : "No"}</div>
-        <div><FaShare /> Shares: {stats.shares}</div>
-      </div>
-
-      <div style={{
-        marginTop: "1rem",
-        width: "100%",
-        height: "30px",
-        backgroundColor: "#e5e7eb",
-        borderRadius: "5px",
-        overflow: "hidden"
-      }}>
         <div style={{
-          width: `${progress}%`,
-          height: "100%",
-          backgroundColor: getColor(),
-          transition: "width 0.3s ease"
-        }} />
-      </div>
+          display: "flex",
+          alignItems: "center",
+          gap: "1rem",
+          marginTop: "1rem"
+        }}>
+          <span style={{
+            padding: "0.3rem 0.8rem",
+            borderRadius: "12px",
+            color: "#fff",
+            fontWeight: "bold",
+            ...getBadgeStyle()
+          }}>
+            {level.toUpperCase()}
+          </span>
 
-      <p style={{ marginTop: "1rem" }}>Progress: {progress}%</p>
+          <div style={{ flexGrow: 1, height: "20px", background: "#e5e7eb", borderRadius: "5px", overflow: "hidden" }}>
+            <div style={{
+              width: `${progress}%`,
+              height: "100%",
+              backgroundColor: getColor(),
+              transition: "width 0.3s ease"
+            }} />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "2rem", marginTop: "1.5rem" }}>
+          <div><FaEye /> Views: {stats.views}</div>
+          <div><FaUsers /> Referrals: {stats.referrals}</div>
+          <div><FaShare /> Shares: {stats.shares}</div>
+        </div>
+
+        <h2 style={{ marginTop: "2rem" }}>Checklist for High Level</h2>
+        <ul>
+          {checklist.map((item, idx) => (
+            <li key={idx} style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+              {item.done ? <FaCheckCircle color="green" /> : <FaCheckCircle color="#ccc" />}
+              {item.text}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -93,22 +113,17 @@ export async function getServerSideProps(context) {
 
   let score = 0;
   let totalViews = 0;
-  let hasComments = false;
   let referrals = 0;
   let sharesCount = 0;
 
-  // ---------------- 1️⃣ TOTAL VIEWS & COMMENTS ----------------
+  // ---------------- 1️⃣ TOTAL VIEWS ----------------
   const postsQuery = query(collection(db, "posts"), where("author", "==", username));
   const postsSnap = await getDocs(postsQuery);
   for (const post of postsSnap.docs) {
     const p = post.data();
     totalViews += p.views || 0;
-
-    const commentsSnap = await getDocs(collection(db, "posts", post.id, "comments"));
-    if (!commentsSnap.empty) hasComments = true;
   }
   if (totalViews >= 500) score += 25;
-  if (hasComments) score += 25;
 
   // ---------------- 2️⃣ REFERRALS ----------------
   const dataDoc = await getDoc(doc(db, "userdate", "data"));
@@ -119,7 +134,7 @@ export async function getServerSideProps(context) {
     if (myKey) {
       const code = data[myKey].referralCode;
       for (const k in data) if (data[k].referredBy === code) referrals++;
-      if (referrals >= 30) score += 25;
+      if (referrals >= 30) score += 50; // Amanota 50
     }
   }
 
@@ -129,9 +144,9 @@ export async function getServerSideProps(context) {
     const d = s.data();
     if (d.username === username) sharesCount += d.count || 0;
   });
-  if (sharesCount >= 150) score += 25;
+  if (sharesCount >= 300) score += 25;
 
-  const stats = { views: totalViews, hasComments, referrals, shares: sharesCount };
+  const stats = { views: totalViews, referrals, shares: sharesCount };
 
   return { props: { username, stats, score } };
 }
