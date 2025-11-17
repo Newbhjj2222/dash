@@ -3,37 +3,145 @@
 import React, { useEffect, useState } from "react";
 import Cookies from "js-cookie";
 import { FaUser } from "react-icons/fa";
+import { db } from "../components/firebase";
+import {
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 
 export default function Netinf() {
   const [level, setLevel] = useState("low");
   const [progress, setProgress] = useState(0);
 
-  useEffect(() => {
-    const cookieLevel = Cookies.get("userLevel");
-    if (cookieLevel) setLevel(cookieLevel);
+  const [loading, setLoading] = useState(true);
 
-    let targetProgress = 0;
-    if (cookieLevel === "low") targetProgress = 33;
-    else if (cookieLevel === "middle") targetProgress = 66;
-    else if (cookieLevel === "high") targetProgress = 100;
+  // ---------------------------
+  //  FUNCTION TO CALCULATE LEVEL
+  // ---------------------------
+  const calculateLevel = async () => {
+    const username = Cookies.get("username");
+    if (!username) return;
 
+    let score = 0;
+
+    // ---------------------------
+    // 1. TOTAL VIEWS ≥ 500
+    // ---------------------------
+    let totalViews = 0;
+    const postsSnapshot = await getDocs(collection(db, "posts"));
+
+    postsSnapshot.forEach((post) => {
+      const p = post.data();
+      if (p.username === username) {
+        totalViews += p.views || 0;
+      }
+    });
+
+    if (totalViews >= 500) score += 25;
+
+    // ---------------------------
+    // 2. COMMENTS: check at least 1 post with comments
+    // ---------------------------
+    let hasComments = false;
+    for (const post of postsSnapshot.docs) {
+      const postId = post.id;
+
+      const commentsRef = collection(db, "posts", postId, "comments");
+      const commentsSnap = await getDocs(commentsRef);
+
+      if (!commentsSnap.empty) {
+        hasComments = true;
+        break;
+      }
+    }
+
+    if (hasComments) score += 25;
+
+    // ---------------------------
+    // 3. REFERRALS ≥ 30
+    // ---------------------------
+    const dataDocRef = doc(db, "userdate", "data");
+    const refSnap = await getDoc(dataDocRef);
+
+    if (refSnap.exists()) {
+      const data = refSnap.data();
+
+      let userKey = null;
+      for (const k in data) {
+        if (data[k].fName === username) {
+          userKey = k;
+          break;
+        }
+      }
+
+      if (userKey) {
+        let myCode = data[userKey].referralCode;
+        let refCount = 0;
+
+        for (const k in data) {
+          if (data[k].referredBy === myCode) {
+            refCount++;
+          }
+        }
+
+        if (refCount >= 30) score += 25;
+      }
+    }
+
+    // ---------------------------
+    // 4. SHARES ≥ 150
+    // ---------------------------
+    let shareCount = 0;
+    const sharesSnap = await getDocs(collection(db, "shares"));
+    sharesSnap.forEach((docu) => {
+      const s = docu.data();
+      if (s.username === username) {
+        shareCount += s.count || 0;
+      }
+    });
+
+    if (shareCount >= 150) score += 25;
+
+    // ---------------------------
+    // SET LEVEL
+    // ---------------------------
+    if (score <= 33) setLevel("low");
+    else if (score <= 66) setLevel("middle");
+    else setLevel("high");
+
+    // SAVE IN COOKIES
+    Cookies.set("userLevel", level);
+
+    animateProgress(score);
+    setLoading(false);
+  };
+
+  // ---------------------------
+  // Progress animation
+  // ---------------------------
+  const animateProgress = (target) => {
+    let current = 0;
     const interval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= targetProgress) {
+        if (prev >= target) {
           clearInterval(interval);
-          return targetProgress;
+          return target;
         }
         return prev + 1;
       });
-    }, 30);
+    }, 20);
+  };
 
-    return () => clearInterval(interval);
+  useEffect(() => {
+    calculateLevel();
   }, []);
 
   const getColor = () => {
-    if (level === "low") return "#f87171"; // red
-    if (level === "middle") return "#facc15"; // yellow
-    if (level === "high") return "#34d399"; // green
+    if (level === "low") return "#f87171";
+    if (level === "middle") return "#facc15";
+    if (level === "high") return "#34d399";
     return "#ccc";
   };
 
@@ -46,6 +154,7 @@ export default function Netinf() {
 
   return (
     <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
+      
       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
         <FaUser size={32} />
         <h1>User Level</h1>
