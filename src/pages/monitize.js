@@ -169,7 +169,7 @@ export default function MonitorPage() {
           required
         ></textarea>
 
-        <label className={styles.label}>Ifoto y’indangamuntu:</label>
+        <label className={styles.label}>Ifoto y’indangamuntu cyangwa passport cyangwa ikindi cyangobwa kerekana ko uri umwenegihugu:</label>
         <input type="file" name="idCard" accept="image/*" onChange={handleChange} required />
         {previews.idCard && <img src={previews.idCard} alt="Preview" className={styles.preview} />}
 
@@ -177,13 +177,13 @@ export default function MonitorPage() {
         <input type="file" name="profilePhoto" accept="image/*" onChange={handleChange} required />
         {previews.profilePhoto && <img src={previews.profilePhoto} alt="Preview" className={styles.preview} />}
 
-        <label className={styles.label}>Screenshot y’inkuru wanditse:</label>
+        <label className={styles.label}>Screenshot y’inkuru wanditse (total posts):</label>
         <input type="file" name="screenshotStories" accept="image/*" onChange={handleChange} required />
         {previews.screenshotStories && (
           <img src={previews.screenshotStories} alt="Preview" className={styles.preview} />
         )}
 
-        <label className={styles.label}>Screenshot ya reffer program:</label>
+        <label className={styles.label}>Screenshot ya net influencer:</label>
         <input type="file" name="screenshotRefer" accept="image/*" onChange={handleChange} required />
         {previews.screenshotRefer && (
           <img src={previews.screenshotRefer} alt="Preview" className={styles.preview} />
