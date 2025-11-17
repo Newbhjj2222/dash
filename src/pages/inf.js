@@ -1,142 +1,27 @@
-'use client';
-
 import React, { useEffect, useState } from "react";
-import Cookies from "js-cookie";
-import { FaUser } from "react-icons/fa";
+import { FaUser, FaUsers, FaEye, FaShare } from "react-icons/fa";
 import { db } from "../components/firebase";
-import {
-  collection,
-  getDocs,
-  doc,
-  getDoc,
-} from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, query, where } from "firebase/firestore";
 
-export default function Netinf() {
+export default function Netinf({ username, stats, score }) {
   const [level, setLevel] = useState("low");
   const [progress, setProgress] = useState(0);
 
-  const [loading, setLoading] = useState(true);
-
-  // ---------------------------
-  //  FUNCTION TO CALCULATE LEVEL
-  // ---------------------------
-  const calculateLevel = async () => {
-    const username = Cookies.get("username");
-    if (!username) return;
-
-    let score = 0;
-
-    // ---------------------------
-    // 1. TOTAL VIEWS ≥ 500
-    // ---------------------------
-    let totalViews = 0;
-    const postsSnapshot = await getDocs(collection(db, "posts"));
-
-    postsSnapshot.forEach((post) => {
-      const p = post.data();
-      if (p.username === username) {
-        totalViews += p.views || 0;
-      }
-    });
-
-    if (totalViews >= 500) score += 25;
-
-    // ---------------------------
-    // 2. COMMENTS: check at least 1 post with comments
-    // ---------------------------
-    let hasComments = false;
-    for (const post of postsSnapshot.docs) {
-      const postId = post.id;
-
-      const commentsRef = collection(db, "posts", postId, "comments");
-      const commentsSnap = await getDocs(commentsRef);
-
-      if (!commentsSnap.empty) {
-        hasComments = true;
-        break;
-      }
-    }
-
-    if (hasComments) score += 25;
-
-    // ---------------------------
-    // 3. REFERRALS ≥ 30
-    // ---------------------------
-    const dataDocRef = doc(db, "userdate", "data");
-    const refSnap = await getDoc(dataDocRef);
-
-    if (refSnap.exists()) {
-      const data = refSnap.data();
-
-      let userKey = null;
-      for (const k in data) {
-        if (data[k].fName === username) {
-          userKey = k;
-          break;
-        }
-      }
-
-      if (userKey) {
-        let myCode = data[userKey].referralCode;
-        let refCount = 0;
-
-        for (const k in data) {
-          if (data[k].referredBy === myCode) {
-            refCount++;
-          }
-        }
-
-        if (refCount >= 30) score += 25;
-      }
-    }
-
-    // ---------------------------
-    // 4. SHARES ≥ 150
-    // ---------------------------
-    let shareCount = 0;
-    const sharesSnap = await getDocs(collection(db, "shares"));
-    sharesSnap.forEach((docu) => {
-      const s = docu.data();
-      if (s.username === username) {
-        shareCount += s.count || 0;
-      }
-    });
-
-    if (shareCount >= 150) score += 25;
-
-    // ---------------------------
+  useEffect(() => {
     // SET LEVEL
-    // ---------------------------
-    if (score <= 33) setLevel("low");
-    else if (score <= 66) setLevel("middle");
-    else setLevel("high");
+    let newLevel = "low";
+    if (score >= 67) newLevel = "high";
+    else if (score >= 34) newLevel = "middle";
+    setLevel(newLevel);
 
-    // SAVE IN COOKIES
-    Cookies.set("userLevel", level);
-
-    animateProgress(score);
-    setLoading(false);
-  };
-
-  // ---------------------------
-  // Progress animation
-  // ---------------------------
-  const animateProgress = (target) => {
-    let current = 0;
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= target) {
-          clearInterval(interval);
-          return target;
-        }
+    // Animate progress
+    let interval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= score) { clearInterval(interval); return score; }
         return prev + 1;
       });
     }, 20);
-  };
-
-  useEffect(() => {
-    calculateLevel();
-  }, []);
+  }, [score]);
 
   const getColor = () => {
     if (level === "low") return "#f87171";
@@ -154,7 +39,6 @@ export default function Netinf() {
 
   return (
     <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
-      
       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
         <FaUser size={32} />
         <h1>User Level</h1>
@@ -167,6 +51,13 @@ export default function Netinf() {
         }}>
           {level.toUpperCase()}
         </span>
+      </div>
+
+      <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
+        <div><FaEye /> Views: {stats.views}</div>
+        <div><FaUsers /> Referrals: {stats.referrals}</div>
+        <div><FaUser /> Comments: {stats.hasComments ? "Yes" : "No"}</div>
+        <div><FaShare /> Shares: {stats.shares}</div>
       </div>
 
       <div style={{
@@ -188,4 +79,59 @@ export default function Netinf() {
       <p style={{ marginTop: "1rem" }}>Progress: {progress}%</p>
     </div>
   );
+}
+
+// ---------------- SSR ----------------
+export async function getServerSideProps(context) {
+  const cookie = context.req.headers.cookie || "";
+  const usernameMatch = cookie.match(/username=([^;]+)/);
+  const username = usernameMatch ? usernameMatch[1] : null;
+
+  if (!username) {
+    return { redirect: { destination: "/login", permanent: false } };
+  }
+
+  let score = 0;
+  let totalViews = 0;
+  let hasComments = false;
+  let referrals = 0;
+  let sharesCount = 0;
+
+  // ---------------- 1️⃣ TOTAL VIEWS & COMMENTS ----------------
+  const postsQuery = query(collection(db, "posts"), where("author", "==", username));
+  const postsSnap = await getDocs(postsQuery);
+  for (const post of postsSnap.docs) {
+    const p = post.data();
+    totalViews += p.views || 0;
+
+    const commentsSnap = await getDocs(collection(db, "posts", post.id, "comments"));
+    if (!commentsSnap.empty) hasComments = true;
+  }
+  if (totalViews >= 500) score += 25;
+  if (hasComments) score += 25;
+
+  // ---------------- 2️⃣ REFERRALS ----------------
+  const dataDoc = await getDoc(doc(db, "userdate", "data"));
+  if (dataDoc.exists()) {
+    const data = dataDoc.data();
+    let myKey = null;
+    for (const k in data) if (data[k].fName === username) { myKey = k; break; }
+    if (myKey) {
+      const code = data[myKey].referralCode;
+      for (const k in data) if (data[k].referredBy === code) referrals++;
+      if (referrals >= 30) score += 25;
+    }
+  }
+
+  // ---------------- 3️⃣ SHARES ----------------
+  const sharesSnap = await getDocs(collection(db, "shares"));
+  sharesSnap.forEach((s) => {
+    const d = s.data();
+    if (d.username === username) sharesCount += d.count || 0;
+  });
+  if (sharesCount >= 150) score += 25;
+
+  const stats = { views: totalViews, hasComments, referrals, shares: sharesCount };
+
+  return { props: { username, stats, score } };
 }
