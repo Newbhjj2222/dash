@@ -23,7 +23,17 @@ export default function NetInf({ username, stats, score }) {
         return prev + 1;
       });
     }, 20);
+
+    return () => clearInterval(interval);
   }, [score]);
+
+  const checklist = [
+    { text: "Kuba amaze kwandika inkuru zifite views 500 byibura", done: stats.views >= 500 },
+    { text: "Kugira referral growth ≥30", done: stats.referrals >= 30 },
+    { text: "Kwagura audience (total shares ≥300)", done: stats.shares >= 300 },
+    { text: "Kuba inyangamugayo mu mikorere (kugendera ku mategeko ya New Talents stories group yose neza)", done: true },
+    { text: "Guhora ukurikirana ibikorwa byawe kandi utanga  inkuru nshya buri munsi", done: true },
+  ];
 
   const getColor = () => {
     if (level === "low") return "#f87171";
@@ -39,14 +49,6 @@ export default function NetInf({ username, stats, score }) {
     return {};
   };
 
-  const checklist = [
-    { text: "Kuba amaze kwandika inkuru zifite views 500 byibura", done: stats.views >= 500 },
-    { text: "Kugira referral growth ≥30", done: stats.referrals >= 30 },
-    { text: "Kwagura audience (total shares ≥300)", done: stats.shares >= 300 },
-    { text: "Kuba inyangamugayo mu mikorere (kugendera ku mategeko ya New Talents stories group neza)", done: true },
-    { text: "Guhora ukurikirana ibikorwa byawe, utanga inkuru nshya buri munsi", done: true },
-  ];
-
   return (
     <div className={styles.container}>
       <Net />
@@ -56,7 +58,14 @@ export default function NetInf({ username, stats, score }) {
         <div className={styles.levelSection}>
           <span className={styles.badge} style={getBadgeStyle()}>{level.toUpperCase()}</span>
           <div className={styles.progressBar}>
-            <div className={styles.progress} style={{ width: `${progress}%`, backgroundColor: getColor() }} />
+            <div 
+              className={styles.progress} 
+              style={{
+                width: `${progress}%`,
+                background: "linear-gradient(90deg, #f87171, #facc15, #34d399)",
+                filter: `brightness(${0.5 + progress/200})`
+              }} 
+            />
           </div>
         </div>
 
@@ -92,15 +101,13 @@ export async function getServerSideProps(context) {
   let referrals = 0;
   let sharesCount = 0;
 
-  // Views
+  // ----------------- VIEWS -----------------
   const postsQuery = query(collection(db, "posts"), where("author", "==", username));
   const postsSnap = await getDocs(postsQuery);
-  for (const post of postsSnap.docs) {
-    totalViews += post.data().views || 0;
-  }
+  for (const post of postsSnap.docs) totalViews += post.data().views || 0;
   if (totalViews >= 500) score += 25;
 
-  // Referrals
+  // ----------------- REFERRALS -----------------
   const dataDoc = await getDoc(doc(db, "userdate", "data"));
   if (dataDoc.exists()) {
     const data = dataDoc.data();
@@ -113,9 +120,9 @@ export async function getServerSideProps(context) {
     }
   }
 
-  // Shares
+  // ----------------- SHARES -----------------
   const sharesSnap = await getDocs(collection(db, "shares"));
-  sharesSnap.forEach((docu) => {
+  sharesSnap.forEach(docu => {
     if (docu.id === username) {
       const data = docu.data();
       for (const key in data) sharesCount += data[key] || 0;
