@@ -58,15 +58,23 @@ export default function NetInf({ username, stats, score }) {
         <div className={styles.levelSection}>
           <span className={styles.badge} style={getBadgeStyle()}>{level.toUpperCase()}</span>
           <div className={styles.progressBar}>
-            <div 
-              className={styles.progress} 
-              style={{
-                width: `${progress}%`,
-                background: "linear-gradient(90deg, #f87171, #facc15, #34d399)",
-                filter: `brightness(${0.5 + progress/200})`
-              }} 
-            />
-          </div>
+  <div
+    className={styles.progress}
+    style={{
+      width: `${progress}%`,
+      background: "linear-gradient(90deg, #f87171, #facc15, #34d399)",
+      filter: `brightness(${0.5 + progress / 200})`,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "#fff",
+      fontWeight: "bold",
+      fontSize: "0.9rem",
+    }}
+  >
+    {level.toUpperCase()}
+  </div>
+</div>
         </div>
 
         <div className={styles.stats}>
