@@ -51,6 +51,9 @@ const Net = () => {
             <Link href="/profile">Profile</Link>
           </li>
           <li>
+            <Link href="/inf">Net Influencer</Link>
+          </li>
+          <li>
             <Link href="https://netchat-2n7k.vercel.app/">Chat</Link>
           </li>
         <li>
