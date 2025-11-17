@@ -1,6 +1,6 @@
 .container {
   max-width: 900px;
-  margin: 64px auto;
+  margin: 60px auto;
   padding: 1rem;
 }
 
@@ -44,7 +44,7 @@
 
 .progress {
   height: 100%;
-  transition: width 0.3s ease;
+  transition: width 1.2s ease, filter 1.2s ease, background 1.2s ease;
 }
 
 .stats {
