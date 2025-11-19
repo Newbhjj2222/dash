@@ -14,8 +14,12 @@ export default function SharePage({ postsData = [], username = "", initialShares
   const [messageVisible, setMessageVisible] = useState(false);
 
   useEffect(() => {
-    // Optionally sync username from cookies
-    const clientUser = Cookies.get("username");
+    // Sync username from cookies if needed
+    const raw = Cookies.get("username");
+    if (raw) {
+      const clean = decodeURIComponent(raw);
+      console.log("Decoded username:", clean);
+    }
   }, []);
 
   // ================================
@@ -33,7 +37,6 @@ export default function SharePage({ postsData = [], username = "", initialShares
     const shareLink = `https://www.newtalentsg.co.rw/post/${postId}`;
     let copied = false;
 
-    // Attempt to copy to clipboard
     try {
       await navigator.clipboard.writeText(`Title: ${head}\nSummary: ${summary}\nLink: ${shareLink}`);
       copied = true;
@@ -51,12 +54,13 @@ export default function SharePage({ postsData = [], username = "", initialShares
       }
     }
 
-    // Show message with success/fail
-    setMessage(copied
-      ? `✅ Link copied successfully!\n\nTitle: ${head}\nSummary: ${summary}\nLink: ${shareLink}`
-      : `❌ Failed to copy link.\n\nTitle: ${head}\nSummary: ${summary}\nLink: ${shareLink}`
+    setMessage(
+      copied
+        ? `✅ Link copied successfully!\n\nTitle: ${head}\nSummary: ${summary}\nLink: ${shareLink}`
+        : `❌ Failed to copy link.\n\nTitle: ${head}\nSummary: ${summary}\nLink: ${shareLink}`
     );
     setMessageVisible(true);
+
     setTimeout(() => {
       setMessageVisible(false);
       setMessage("");
@@ -64,24 +68,23 @@ export default function SharePage({ postsData = [], username = "", initialShares
 
     // Update shares count in Firestore
     try {
-      await updateDoc(shareDocRef, {
-        [postId]: increment(1)
-      });
+      await updateDoc(shareDocRef, { [postId]: increment(1) });
     } catch (err) {
       await setDoc(shareDocRef, { [postId]: 1 }, { merge: true });
     }
 
-    // Update local state optimistically
+    // Local update
     setSharesCount((prev) => ({
       ...prev,
       [postId]: prev[postId] ? prev[postId] + 1 : 1
     }));
+
     setTotalShares((t) => t + 1);
   };
 
   return (
     <>
-    <Net />
+      <Net />
       <div className={styles.pageWrap}>
         {messageVisible && (
           <div className={styles.topMessage} role="status" aria-live="polite">
@@ -143,18 +146,22 @@ export default function SharePage({ postsData = [], username = "", initialShares
 }
 
 // ================================
-// SSR SECTION
+// SSR SECTION (FULLY UPDATED)
 // ================================
 export async function getServerSideProps(context) {
   const cookie = context.req.headers.cookie || "";
+
   const usernameMatch = cookie.match(/username=([^;]+)/);
-  const username = usernameMatch ? usernameMatch[1] : null;
+  const rawUsername = usernameMatch ? usernameMatch[1] : null;
+
+  // Decode username correctly to remove %20 %24 %2F etc.
+  const username = rawUsername ? decodeURIComponent(rawUsername) : null;
 
   if (!username) {
     return { redirect: { destination: "/login", permanent: false } };
   }
 
-  // Fetch posts authored by username
+  // Fetch posts for this author
   const postsRef = collection(db, "posts");
   const q = query(postsRef, where("author", "==", username));
   const querySnapshot = await getDocs(q);
@@ -188,7 +195,7 @@ export async function getServerSideProps(context) {
 
   postsData.sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt));
 
-  // Fetch shares doc for this user
+  // Fetch shares document
   const sharesRef = doc(db, "shares", username);
   let initialSharesCounts = {};
   let initialTotalShares = 0;
