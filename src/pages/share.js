@@ -7,40 +7,46 @@ import { collection, getDocs, query, where, doc, updateDoc, increment, setDoc, g
 import Cookies from "js-cookie";
 import Net from "@/components/Net";
 
-export default function SharePage({ postsData = [], username = "", initialSharesCounts = {}, initialTotalShares = 0 }) {
-  const [sharesCount, setSharesCount] = useState(initialSharesCounts || {});
-  const [totalShares, setTotalShares] = useState(initialTotalShares || 0);
+export default function SharePage(props) {
+  // ================================
+  // CLEAN USERNAME
+  // ================================
+  const cleanUsername = decodeURIComponent(props.username || "");
+
+  const postsData = props.postsData || [];
+  const [sharesCount, setSharesCount] = useState(props.initialSharesCounts || {});
+  const [totalShares, setTotalShares] = useState(props.initialTotalShares || 0);
   const [message, setMessage] = useState("");
   const [messageVisible, setMessageVisible] = useState(false);
 
+  // Debug (optional)
   useEffect(() => {
-    // Sync username from cookies if needed
     const raw = Cookies.get("username");
     if (raw) {
-      const clean = decodeURIComponent(raw);
-      console.log("Decoded username:", clean);
+      console.log("Raw cookie username:", raw);
+      console.log("Decoded username:", decodeURIComponent(raw));
     }
   }, []);
 
   // ================================
-  // Handle sharing
+  // COPY & SHARE HANDLER
   // ================================
   const handleShare = async (postId, head, summary) => {
-    if (!username) {
+    if (!cleanUsername) {
       setMessage("No username found. Please login.");
       setMessageVisible(true);
       setTimeout(() => setMessageVisible(false), 4000);
       return;
     }
 
-    const shareDocRef = doc(db, "shares", username);
+    const shareDocRef = doc(db, "shares", cleanUsername);
     const shareLink = `https://www.newtalentsg.co.rw/post/${postId}`;
     let copied = false;
 
     try {
       await navigator.clipboard.writeText(`Title: ${head}\nSummary: ${summary}\nLink: ${shareLink}`);
       copied = true;
-    } catch (e) {
+    } catch {
       try {
         const ta = document.createElement("textarea");
         ta.value = `Title: ${head}\nSummary: ${summary}\nLink: ${shareLink}`;
@@ -49,7 +55,7 @@ export default function SharePage({ postsData = [], username = "", initialShares
         document.execCommand("copy");
         ta.remove();
         copied = true;
-      } catch (err) {
+      } catch {
         copied = false;
       }
     }
@@ -59,21 +65,18 @@ export default function SharePage({ postsData = [], username = "", initialShares
         ? `✅ Link copied successfully!\n\nTitle: ${head}\nSummary: ${summary}\nLink: ${shareLink}`
         : `❌ Failed to copy link.\n\nTitle: ${head}\nSummary: ${summary}\nLink: ${shareLink}`
     );
+
     setMessageVisible(true);
+    setTimeout(() => setMessageVisible(false), 6000);
 
-    setTimeout(() => {
-      setMessageVisible(false);
-      setMessage("");
-    }, 6000);
-
-    // Update shares count in Firestore
+    // Firestore share counter update
     try {
       await updateDoc(shareDocRef, { [postId]: increment(1) });
-    } catch (err) {
+    } catch {
       await setDoc(shareDocRef, { [postId]: 1 }, { merge: true });
     }
 
-    // Local update
+    // Local state
     setSharesCount((prev) => ({
       ...prev,
       [postId]: prev[postId] ? prev[postId] + 1 : 1
@@ -85,6 +88,7 @@ export default function SharePage({ postsData = [], username = "", initialShares
   return (
     <>
       <Net />
+
       <div className={styles.pageWrap}>
         {messageVisible && (
           <div className={styles.topMessage} role="status" aria-live="polite">
@@ -96,14 +100,16 @@ export default function SharePage({ postsData = [], username = "", initialShares
           <div className={styles.headerRow}>
             <h1 className={styles.title}>Share your posts</h1>
 
-            <div className={styles.totalCard} aria-hidden={false}>
+            <div className={styles.totalCard}>
               <div className={styles.totalLabel}>Total shares by you</div>
               <div className={styles.totalNumber}>{totalShares}</div>
             </div>
           </div>
 
           {postsData.length === 0 ? (
-            <p className={styles.noPosts}>No posts found for <strong>{username}</strong></p>
+            <p className={styles.noPosts}>
+              No posts found for <strong>{cleanUsername}</strong>
+            </p>
           ) : (
             <ul className={styles.list}>
               {postsData.map((post) => (
@@ -113,7 +119,9 @@ export default function SharePage({ postsData = [], username = "", initialShares
                     <p className={styles.postSummary}>{post.storySummary}</p>
 
                     <div className={styles.metaRow}>
-                      <span className={styles.shareCount}>Shares: {sharesCount[post.id] || 0}</span>
+                      <span className={styles.shareCount}>
+                        Shares: {sharesCount[post.id] || 0}
+                      </span>
 
                       <a
                         className={styles.viewLink}
@@ -130,7 +138,6 @@ export default function SharePage({ postsData = [], username = "", initialShares
                     <button
                       onClick={() => handleShare(post.id, post.head, post.storySummary)}
                       className={styles.button}
-                      aria-label={`Copy link for ${post.head}`}
                     >
                       Copy Link
                     </button>
@@ -146,22 +153,20 @@ export default function SharePage({ postsData = [], username = "", initialShares
 }
 
 // ================================
-// SSR SECTION (FULLY UPDATED)
+// SERVER SIDE – FIXED
 // ================================
 export async function getServerSideProps(context) {
   const cookie = context.req.headers.cookie || "";
-
   const usernameMatch = cookie.match(/username=([^;]+)/);
-  const rawUsername = usernameMatch ? usernameMatch[1] : null;
 
-  // Decode username correctly to remove %20 %24 %2F etc.
+  const rawUsername = usernameMatch ? usernameMatch[1] : null;
   const username = rawUsername ? decodeURIComponent(rawUsername) : null;
 
   if (!username) {
     return { redirect: { destination: "/login", permanent: false } };
   }
 
-  // Fetch posts for this author
+  // Fetch posts
   const postsRef = collection(db, "posts");
   const q = query(postsRef, where("author", "==", username));
   const querySnapshot = await getDocs(q);
@@ -170,13 +175,13 @@ export async function getServerSideProps(context) {
     if (!html) return "";
     const text = String(html).replace(/<[^>]*>/g, " ");
     const collapsed = text.replace(/\s+/g, " ").trim();
-    return collapsed.length <= 300 ? collapsed : collapsed.slice(0, 300).trim() + "...";
+    return collapsed.length <= 500 ? collapsed : collapsed.slice(0, 300).trim() + "...";
   };
 
   const toMs = (dateValue) => {
     if (!dateValue) return 0;
-    if (typeof dateValue === "object" && dateValue !== null && "seconds" in dateValue) {
-      return (dateValue.seconds || 0) * 1000 + (dateValue.nanoseconds ? Math.floor(dateValue.nanoseconds / 1e6) : 0);
+    if (dateValue?.seconds) {
+      return dateValue.seconds * 1000 + Math.floor((dateValue.nanoseconds || 0) / 1e6);
     }
     if (typeof dateValue === "string") return new Date(dateValue).getTime() || 0;
     if (typeof dateValue === "number") return dateValue < 1e12 ? dateValue * 1000 : dateValue;
@@ -195,24 +200,28 @@ export async function getServerSideProps(context) {
 
   postsData.sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt));
 
-  // Fetch shares document
+  // Fetch shares
   const sharesRef = doc(db, "shares", username);
   let initialSharesCounts = {};
   let initialTotalShares = 0;
 
   try {
-    const sharesSnap = await getDoc(sharesRef);
-    if (sharesSnap.exists()) {
-      initialSharesCounts = sharesSnap.data() || {};
+    const snap = await getDoc(sharesRef);
+    if (snap.exists()) {
+      initialSharesCounts = snap.data() || {};
       initialTotalShares = Object.values(initialSharesCounts).reduce((acc, val) => {
         const n = typeof val === "number" ? val : parseInt(val, 10) || 0;
         return acc + n;
       }, 0);
     }
-  } catch (err) {
-    initialSharesCounts = {};
-    initialTotalShares = 0;
-  }
+  } catch {}
 
-  return { props: { postsData, username, initialSharesCounts, initialTotalShares } };
+  return {
+    props: {
+      postsData,
+      username,
+      initialSharesCounts,
+      initialTotalShares
+    }
+  };
 }
