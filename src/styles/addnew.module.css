@@ -1,0 +1,128 @@
+/* styles/addnew.module.css */
+
+.container {
+  width: 100%;
+  max-width: 900px;
+  margin: 80px auto;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.title {
+  text-align: center;
+  font-size: 28px;
+  margin-bottom: 25px;
+  font-weight: bold;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inputGroup label {
+  font-weight: 600;
+}
+
+.inputGroup input {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+/* ===== TOOLBAR ===== */
+.toolbar {
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+  background: #f3f3f3;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  justify-content: flex-start;
+}
+
+.toolbar svg {
+  font-size: 20px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.toolbar svg:hover {
+  color: #0070f3;
+  transform: scale(1.1);
+}
+
+/* ===== EDITOR ===== */
+.editor {
+  min-height: 220px;
+  padding: 15px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  background: #fafafa;
+  line-height: 1.6;
+  font-size: 16px;
+  overflow-y: auto;
+}
+
+.editor:focus {
+  outline: 2px solid #0070f3;
+  background: #ffffff;
+}
+
+/* ===== BUTTON ===== */
+.btn {
+  padding: 14px;
+  background: #0070f3;
+  color: white;
+  border: none;
+  font-size: 17px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.btn:hover {
+  background: #0059c9;
+}
+
+/* ===== MESSAGE ===== */
+.message {
+  text-align: center;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+  .container {
+    margin: 20px;
+    padding: 15px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+
+  .toolbar {
+    gap: 8px;
+  }
+
+  .toolbar svg {
+    font-size: 18px;
+  }
+
+  .editor {
+    min-height: 180px;
+    padding: 12px;
+  }
+}
