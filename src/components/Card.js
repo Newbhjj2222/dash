@@ -57,10 +57,10 @@ export default function NesValueCard() {
         fontSize: "14px",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-          <FaArrowUp /> Now: 13 RWF / 1 Nes
+          <FaArrowRight /> Now: 8.34 RWF / 1 Nes
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-          <FaArrowDown /> Upcoming: 15 RWF / 1 Nes
+          <FaArrowUp /> Upcoming: 15 RWF / 1 Nes
         </div>
       </div>
     </div>
