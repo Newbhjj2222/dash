@@ -1,5 +1,5 @@
 import React from "react";
-import { FaArrowUp, FaArrowDown } from "react-icons/fa";
+import { FaArrowUp, FaArrowDown, FaArrowRight } from "react-icons/fa";
 
 export default function NesValueCard() {
   return (
