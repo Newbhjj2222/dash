@@ -8,7 +8,7 @@ import Net from "../components/Net";
 export default function Balance({ username, nes }) {
   const [formData, setFormData] = useState({ fone: "", amount: "" });
   const [sending, setSending] = useState(false);
-  const rwf = nes * 13;
+  const rwf = nes * 8.34;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
