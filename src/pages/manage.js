@@ -8,16 +8,22 @@ import Cookies from "js-cookie";
 export default function ManagePage({ initialNews, username }) {
   const [newsList, setNewsList] = useState(initialNews);
 
+  // Clean content: remove HTML tags
+  function cleanText(html) {
+    if (!html) return "";
+    let text = html.replace(/<[^>]+>/g, " ");
+    text = text.replace(/\s+/g, " ").trim();
+    return text;
+  }
+
   // Delete post
   const handleDelete = async (id) => {
     if (!confirm("Urashaka koko gusiba iyi post?")) return;
 
-    // Fade out locally
     setNewsList(prev =>
       prev.map(n => n.id === id ? { ...n, visible: false } : n)
     );
 
-    // Wait for animation
     setTimeout(async () => {
       await deleteDoc(doc(db, "news", id));
       setNewsList(prev => prev.filter(n => n.id !== id));
@@ -29,6 +35,7 @@ export default function ManagePage({ initialNews, username }) {
       <Net />
       <div className={styles.container}>
         <h1 className={styles.pageTitle}>Manage Your Posts</h1>
+
         {newsList.length === 0 ? (
           <p>No posts found for user "{username}"</p>
         ) : (
@@ -38,17 +45,27 @@ export default function ManagePage({ initialNews, username }) {
                 key={news.id}
                 className={`${styles.newsCard} ${!news.visible ? styles.fadeOut : ""}`}
               >
-                <p className={styles.author}><strong>Author:</strong> {news.author}</p>
+                <p className={styles.author}>
+                  <strong>Author:</strong> {news.author}
+                </p>
+
                 <h2 className={styles.title}>{news.title}</h2>
+
                 {news.imageUrl && (
                   <img src={news.imageUrl} alt={news.title} className={styles.image} />
                 )}
-                <p className={styles.content}>{news.content}</p>
+
+                {/* Show content WITHOUT HTML tags */}
+                <p className={styles.content}>
+                  {cleanText(news.content)}
+                </p>
+
                 <div className={styles.actions}>
                   <button className={styles.deleteBtn} onClick={() => handleDelete(news.id)}>
                     Delete
                   </button>
                 </div>
+
               </div>
             ))}
           </div>
@@ -58,11 +75,11 @@ export default function ManagePage({ initialNews, username }) {
   );
 }
 
+
 // SSR: Fetch posts authored by username
 export async function getServerSideProps(context) {
   let username = "";
 
-  // Attempt to get username from cookies
   if (context.req.headers.cookie) {
     const match = context.req.headers.cookie
       .split(";")
