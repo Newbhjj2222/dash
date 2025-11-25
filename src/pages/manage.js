@@ -10,11 +10,29 @@ export default function ManagePage({ initialNews, username }) {
 
   // Clean content: remove HTML tags
   function cleanText(html) {
-    if (!html) return "";
-    let text = html.replace(/<[^>]+>/g, " ");
-    text = text.replace(/\s+/g, " ").trim();
-    return text;
-  }
+  if (!html) return "";
+
+  let text = html;
+
+  // 1. Convert HTML entities (nbsp, amp, quot, etc.)
+  text = text.replace(/&nbsp;/gi, " ");
+  text = text.replace(/&amp;/gi, "&");
+  text = text.replace(/&quot;/gi, '"');
+  text = text.replace(/&lt;/gi, "<");
+  text = text.replace(/&gt;/gi, ">");
+  text = text.replace(/&#39;/gi, "'");
+
+  // Remove any remaining entities like &#123; or &something;
+  text = text.replace(/&[#A-Za-z0-9]+;/g, " ");
+
+  // 2. Remove all HTML tags
+  text = text.replace(/<[^>]+>/g, " ");
+
+  // 3. Replace multiple spaces with single space
+  text = text.replace(/\s+/g, " ").trim();
+
+  return text;
+}
 
   // Delete post
   const handleDelete = async (id) => {
