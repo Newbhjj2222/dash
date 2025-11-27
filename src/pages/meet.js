@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import styles from "../styles/meet.module.css";
 import { FaPaperPlane, FaVideo, FaStop, FaSignOutAlt, FaImage } from "react-icons/fa";
 import Cookies from "js-cookie";
+import Net from "@/components/Net";
 import { db } from "@/components/firebase";
 import {
   doc,
@@ -167,6 +168,8 @@ export default function Meet({ initialUsername }) {
   // RENDER
   // =====================================
   return (
+    <>
+    <Net />
     <div className={styles.container}>
       <header className={styles.header}>
         <h1>Meeting Conner</h1>
@@ -282,6 +285,7 @@ export default function Meet({ initialUsername }) {
         )}
       </main>
     </div>
+          </>
   );
 }
 
