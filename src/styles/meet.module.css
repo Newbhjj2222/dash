@@ -1,107 +1,192 @@
 .container {
-  display: flex;
-  height: 100vh;
-  background: #f5f5f5;
-}
-
-/* Participants list */
-.participants {
-  width: 25%;
-  background: white;
-  padding: 20px;
-  border-right: 2px solid #ddd;
-  overflow-y: auto;
-}
-
-.user {
-  background: #e8f7ff;
-  padding: 8px;
-  margin-bottom: 8px;
-  border-radius: 6px;
-}
-
-/* Chat Area */
-.chatArea {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-.messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-}
-
-.myMsg {
-  background: #007bff;
-  color: white;
+  max-width: 1200px;
+  margin: auto;
   padding: 10px;
-  margin-bottom: 10px;
-  max-width: 70%;
-  border-radius: 8px;
-  margin-left: auto;
+  font-family: sans-serif;
 }
 
-.otherMsg {
-  background: #eee;
-  padding: 10px;
-  max-width: 70%;
-  margin-bottom: 10px;
-  border-radius: 8px;
-}
-
-.chatImage {
-  width: 200px;
-  border-radius: 8px;
-}
-
-.typing {
-  font-size: 14px;
-  padding: 5px 15px;
-  color: #555;
-}
-
-/* Input Area */
-.inputBox {
+.header {
   display: flex;
-  gap: 10px;
-  padding: 12px;
-  background: white;
-  border-top: 2px solid #ddd;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.userBox {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
   align-items: center;
 }
 
-.inputBox input[type="text"] {
-  flex: 1;
-  padding: 10px;
+.usernameInput {
+  padding: 5px 8px;
+  border-radius: 5px;
   border: 1px solid #ccc;
-  border-radius: 6px;
 }
 
-.leave {
-  background: red;
+.smallBtn {
+  padding: 5px 10px;
+  background: #2575fc;
   color: white;
-  padding: 8px 15px;
   border: none;
-  border-radius: 6px;
+  border-radius: 5px;
+  cursor: pointer;
 }
 
-.emojiPicker {
-  position: absolute;
-  bottom: 70px;
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.meetingCard {
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f5f5f5;
+}
+
+.meetingInfo strong {
+  font-size: 18px;
+}
+
+.controls button {
+  margin-right: 5px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.launchBtn {
+  background: #28a745;
+  color: white;
+}
+
+.joinBtn {
+  background: #2575fc;
+  color: white;
+}
+
+.endBtn {
+  background: #dc3545;
+  color: white;
+}
+
+.leaveBtn {
+  background: #ffc107;
+  color: black;
+}
+
+.chatSection {
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fff;
+}
+
+.chatHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.privateInput {
+  padding: 5px 8px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  margin-top: 5px;
+}
+
+.messages {
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.msg {
+  padding: 5px 8px;
+  border-radius: 5px;
+  background: #e9ecef;
+  max-width: 70%;
+  word-wrap: break-word;
+}
+
+.myMsg {
+  background: #d1e7dd;
+  align-self: flex-end;
+}
+
+.systemMsg {
+  background: #f8d7da;
+  text-align: center;
+  max-width: 100%;
+}
+
+.hiddenMsg {
+  display: none;
+}
+
+.msgMeta {
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.toUser {
+  font-size: 11px;
+  color: #555;
+  margin-left: 3px;
+}
+
+.msgBody img {
+  max-width: 150px;
+  max-height: 150px;
+  display: block;
+  margin-top: 5px;
+  border-radius: 5px;
+}
+
+.inputRow {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.inputRow input[type="text"] {
+  flex: 1;
+  padding: 5px 8px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.sendBtn, .imageLabel {
+  padding: 5px 10px;
+  background: #2575fc;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.imageLabel input {
+  display: none;
 }
 
 /* Responsive */
-@media (max-width: 768px) {
-  .container {
-    flex-direction: column;
-  }
-
-  .participants {
-    width: 100%;
-    border-right: none;
-    border-bottom: 2px solid #ddd;
+@media(max-width: 768px) {
+  .meetingCard, .chatSection {
+    max-width: 100%;
   }
 }
