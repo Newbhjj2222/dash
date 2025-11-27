@@ -1,211 +1,261 @@
-"use client";
-
 import { useEffect, useState, useRef } from "react";
+import styles from "../styles/meet.module.css";
+import { FaPaperPlane, FaVideo, FaStop, FaSignOutAlt, FaImage } from "react-icons/fa";
+import Cookies from "js-cookie";
+import { db } from "@/components/firebase";
 import {
-  db,
-  collection,
-  addDoc,
-  onSnapshot,
-  serverTimestamp,
   doc,
   setDoc,
   updateDoc,
-} from "../firebase";
-import data from "@emoji-mart/data";
-import Picker from "@emoji-mart/react";
-import styles from "../styles/meet.module.css";
+  serverTimestamp,
+  collection,
+  addDoc,
+  query,
+  orderBy,
+  onSnapshot,
+  limit
+} from "firebase/firestore";
 
-export default function Meet() {
+export default function Meet({ initialUsername }) {
+  const [username, setUsername] = useState(initialUsername || "");
+  const [meeting, setMeeting] = useState({ active: false });
+  const [showChat, setShowChat] = useState(false);
+  const [msg, setMsg] = useState("");
   const [messages, setMessages] = useState([]);
-  const [participants, setParticipants] = useState([]);
-  const [typingUsers, setTypingUsers] = useState([]);
-  const [showEmoji, setShowEmoji] = useState(false);
-  const [text, setText] = useState("");
+  const [privateUser, setPrivateUser] = useState("");
+  const [imageBase64, setImageBase64] = useState(null);
+  const messagesEndRef = useRef(null);
 
-  const userName = typeof window !== "undefined" ? localStorage.getItem("userName") : "Guest";
+  const meetingDocRef = doc(db, "meetings", "current");
 
-  const messagesRef = collection(db, "meetMessages");
-  const participantsRef = collection(db, "meetParticipants");
-
-  const typingRef = collection(db, "typing");
-
-  const typingTimeout = useRef(null);
-
-  // JOIN MEETING
+  // Realtime meeting listener
   useEffect(() => {
-    if (!userName) return;
-
-    setDoc(doc(participantsRef, userName), {
-      name: userName,
-      online: true,
-      joinedAt: serverTimestamp(),
+    const unsub = onSnapshot(meetingDocRef, (snap) => {
+      if (!snap.exists()) {
+        setMeeting({ active: false });
+        return;
+      }
+      const data = snap.data();
+      setMeeting({
+        active: data.active || false,
+        hostUsername: data.hostUsername || null,
+        startedAt: data.startedAt ? data.startedAt.toDate() : null,
+      });
     });
-
-    return () => {
-      updateDoc(doc(participantsRef, userName), { online: false });
-    };
+    return () => unsub();
   }, []);
 
-  // REALTIME MESSAGES
+  // Realtime messages listener
   useEffect(() => {
-    const unsub = onSnapshot(messagesRef, (snapshot) => {
-      const list = [];
-      snapshot.forEach((d) => list.push({ id: d.id, ...d.data() }));
-      setMessages(list.sort((a, b) => a.time?.seconds - b.time?.seconds));
+    const msgsQuery = query(
+      collection(db, "meetings", "current", "messages"),
+      orderBy("createdAt", "asc"),
+      limit(500)
+    );
+
+    const unsub = onSnapshot(msgsQuery, (snapshot) => {
+      const arr = [];
+      snapshot.forEach((d) => arr.push({ id: d.id, ...d.data() }));
+      setMessages(arr);
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
     });
 
     return () => unsub();
   }, []);
 
-  // REALTIME PARTICIPANTS
-  useEffect(() => {
-    const unsub = onSnapshot(participantsRef, (snapshot) => {
-      const list = [];
-      snapshot.forEach((d) => list.push(d.data()));
-      setParticipants(list);
-    });
-
-    return () => unsub();
-  }, []);
-
-  // REALTIME TYPING INDICATOR
-  useEffect(() => {
-    const unsub = onSnapshot(typingRef, (snapshot) => {
-      const list = [];
-      snapshot.forEach((d) => list.push(d.id));
-      setTypingUsers(list.filter((u) => u !== userName));
-    });
-
-    return () => unsub();
-  }, []);
-
-  // HANDLE TYPING
-  const handleTyping = async (val) => {
-    setText(val);
-
-    await setDoc(doc(typingRef, userName), { typing: true });
-
-    if (typingTimeout.current) clearTimeout(typingTimeout.current);
-
-    typingTimeout.current = setTimeout(() => {
-      updateDoc(doc(typingRef, userName), { typing: false });
-    }, 1500);
+  const saveUsername = () => {
+    if (!username.trim()) return alert("Injiza username");
+    Cookies.set("username", username.trim(), { expires: 7 });
   };
 
-  // SEND TEXT MESSAGE
-  const sendMessage = async () => {
-    if (!text.trim()) return;
-
-    await addDoc(messagesRef, {
-      text,
-      sender: userName,
-      type: "text",
-      time: serverTimestamp(),
-    });
-
-    setText("");
-    await updateDoc(doc(typingRef, userName), { typing: false });
+  const launchMeeting = async () => {
+    await setDoc(meetingDocRef, {
+      active: true,
+      hostUsername: username,
+      startedAt: serverTimestamp(),
+    }, { merge: true });
+    setShowChat(true);
   };
 
-  // SEND IMAGE AS BASE64
-  const sendImageBase64 = (e) => {
+  const endMeeting = async () => {
+    await updateDoc(meetingDocRef, {
+      active: false,
+      endedAt: serverTimestamp(),
+    });
+    setShowChat(false);
+  };
+
+  const leaveMeeting = async () => {
+    await addDoc(collection(meetingDocRef, "messages"), {
+      username: "system",
+      text: `${username} left the meeting`,
+      type: "system",
+      createdAt: serverTimestamp(),
+    });
+    setShowChat(false);
+  };
+
+  const joinMeeting = async () => {
+    if (!username) return alert("Banza ushyire username!");
+    setShowChat(true);
+    await addDoc(collection(meetingDocRef, "messages"), {
+      username: "system",
+      text: `${username} joined the meeting`,
+      type: "system",
+      createdAt: serverTimestamp(),
+    });
+  };
+
+  const sendMessage = async (e) => {
+    e.preventDefault();
+    if (!msg.trim() && !imageBase64) return;
+    await addDoc(collection(meetingDocRef, "messages"), {
+      username,
+      text: msg.trim() || "",
+      image: imageBase64 || null,
+      type: privateUser ? "private" : "user",
+      to: privateUser || null,
+      createdAt: serverTimestamp(),
+    });
+    setMsg("");
+    setImageBase64(null);
+    setPrivateUser("");
+  };
+
+  const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
-
-    reader.onload = async () => {
-      await addDoc(messagesRef, {
-        sender: userName,
-        type: "image",
-        image: reader.result,
-        time: serverTimestamp(),
-      });
-    };
-
+    reader.onloadend = () => setImageBase64(reader.result);
     reader.readAsDataURL(file);
-  };
-
-  // LEAVE MEETING
-  const leaveMeeting = () => {
-    if (userName !== "NewTalentsG") {
-      updateDoc(doc(participantsRef, userName), { online: false });
-      window.location.href = "/";
-    }
   };
 
   return (
     <div className={styles.container}>
+      <header className={styles.header}>
+        <h1>Meeting Conner</h1>
+        <div className={styles.userBox}>
+          <label>Username:</label>
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className={styles.usernameInput}
+            placeholder="Set username"
+          />
+          <button onClick={saveUsername} className={styles.smallBtn}>
+            Save
+          </button>
+        </div>
+      </header>
 
-      {/* Participants */}
-      <div className={styles.participants}>
-        <h3>Participants Online</h3>
-        {participants
-          .filter((p) => p.online)
-          .map((p, i) => (
-            <p key={i} className={styles.user}>
-              🟢 {p.name}
-            </p>
-          ))}
-      </div>
+      <main className={styles.main}>
+        <div className={styles.meetingCard}>
+          <div className={styles.meetingInfo}>
+            {meeting.active ? (
+              <>
+                <strong>Active Meeting</strong>
+                <div>Host: {meeting.hostUsername}</div>
+                <div>
+                  Started: {meeting.startedAt ? meeting.startedAt.toLocaleString() : "recent"}
+                </div>
+              </>
+            ) : (
+              <strong className={styles.noMeeting}>No meeting today</strong>
+            )}
+          </div>
 
-      {/* Chat Area */}
-      <div className={styles.chatArea}>
-
-        {/* Messages */}
-        <div className={styles.messages}>
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={m.sender === userName ? styles.myMsg : styles.otherMsg}
-            >
-              {m.type === "text" && <p>{m.text}</p>}
-              {m.type === "image" && (
-                <img src={m.image} className={styles.chatImage} />
-              )}
-              <small>{m.sender}</small>
-            </div>
-          ))}
+          <div className={styles.controls}>
+            {username === "NewtalentsG" ? (
+              meeting.active ? (
+                <>
+                  <button className={styles.endBtn} onClick={endMeeting}>
+                    <FaStop /> End Meeting
+                  </button>
+                  <button className={styles.joinBtn} onClick={() => setShowChat(!showChat)}>
+                    <FaVideo /> Open Chat
+                  </button>
+                </>
+              ) : (
+                <button className={styles.launchBtn} onClick={launchMeeting}>
+                  <FaVideo /> Launch Meeting
+                </button>
+              )
+            ) : meeting.active ? (
+              <>
+                <button className={styles.joinBtn} onClick={joinMeeting}>
+                  Join Meeting
+                </button>
+                <button className={styles.leaveBtn} onClick={leaveMeeting}>
+                  <FaSignOutAlt /> Leave Meeting
+                </button>
+              </>
+            ) : (
+              <div className={styles.noMeetingSmall}>No meeting to join</div>
+            )}
+          </div>
         </div>
 
-        {/* Typing Indicator */}
-        {typingUsers.length > 0 && (
-          <div className={styles.typing}>
-            {typingUsers.join(", ")} typing...
-          </div>
-        )}
-
-        {/* Input Area */}
-        <div className={styles.inputBox}>
-          <button onClick={() => setShowEmoji(!showEmoji)}>😊</button>
-
-          {showEmoji && (
-            <div className={styles.emojiPicker}>
-              <Picker
-                data={data}
-                onEmojiSelect={(e) => setText(text + e.native)}
+        {/* CHAT UI */}
+        {showChat && meeting.active && (
+          <section className={styles.chatSection}>
+            <div className={styles.chatHeader}>
+              <h2>Meeting Chat</h2>
+              <input
+                placeholder="Private user (optional)"
+                value={privateUser}
+                onChange={(e) => setPrivateUser(e.target.value)}
+                className={styles.privateInput}
               />
             </div>
-          )}
 
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => handleTyping(e.target.value)}
-            placeholder="Write message..."
-          />
+            <div className={styles.messages}>
+              {messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`${styles.msg} ${
+                    m.username === username ? styles.myMsg : ""
+                  } ${m.type === "system" ? styles.systemMsg : ""} ${
+                    m.type === "private" && m.to !== username ? styles.hiddenMsg : ""
+                  }`}
+                >
+                  <div className={styles.msgMeta}>
+                    <strong>{m.username}</strong>
+                    {m.to && <span className={styles.toUser}> → {m.to}</span>}
+                  </div>
+                  <div className={styles.msgBody}>
+                    {m.text}
+                    {m.image && <img src={m.image} className={styles.msgImage} />}
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
 
-          <input type="file" accept="image/*" onChange={sendImageBase64} />
-
-          <button onClick={sendMessage}>Send</button>
-
-          {userName !== "NewTalentsG" && (
-            <button className={styles.leave} onClick={leaveMeeting}>
-              Leave
-            </button>
-          )}
-        </div>
-      </div>
+            <form className={styles.inputRow} onSubmit={sendMessage}>
+              <input
+                value={msg}
+                onChange={(e) => setMsg(e.target.value)}
+                placeholder="Type a message..."
+              />
+              <label className={styles.imageLabel}>
+                <FaImage />
+                <input type="file" accept="image/*" onChange={handleImageUpload} hidden />
+              </label>
+              <button className={styles.sendBtn}>
+                <FaPaperPlane />
+              </button>
+            </form>
+          </section>
+        )}
+      </main>
     </div>
   );
+}
+
+// SSR without firebase-admin
+import { parse } from "cookie";
+export async function getServerSideProps(context) {
+  const cookies = context.req.headers.cookie ? parse(context.req.headers.cookie) : {};
+  const username = cookies.username || null;
+  return { props: { initialUsername: username } };
 }
