@@ -38,6 +38,9 @@ const Net = () => {
           <li>
             <Link href="/rules">Rules</Link>
           </li>
+          <li>
+            <Link href="/rules">Rules</Link>
+          </li>
          <li>
             <Link href="/lyrics">write songs</Link>
           </li>
