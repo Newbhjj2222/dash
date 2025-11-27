@@ -17,10 +17,14 @@ import {
   getDocs
 } from "firebase/firestore";
 import { useRouter } from "next/router";
+import { parse } from "cookie";
 
-export default function Meet() {
+// =====================================
+// COMPONENT
+// =====================================
+export default function Meet({ initialUsername }) {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(initialUsername || "");
   const [meeting, setMeeting] = useState({ active: false });
   const [showChat, setShowChat] = useState(false);
   const [msg, setMsg] = useState("");
@@ -33,17 +37,14 @@ export default function Meet() {
   const messagesEndRef = useRef(null);
   const meetingDocRef = doc(db, "meetings", "current");
 
-  // Check cookie for username
+  // Redirect to login if username missing (client-side safety)
   useEffect(() => {
-    const saved = Cookies.get("username");
-    if (!saved) {
-      router.push("/login"); // redirect to login
-    } else {
-      setUsername(saved);
-    }
-  }, []);
+    if (!initialUsername) router.push("/login");
+  }, [initialUsername]);
 
-  // Meeting listener
+  // =====================================
+  // Firestore listeners
+  // =====================================
   useEffect(() => {
     const unsub = onSnapshot(meetingDocRef, snap => {
       if (!snap.exists()) {
@@ -60,7 +61,6 @@ export default function Meet() {
     return () => unsub();
   }, []);
 
-  // Messages listener
   useEffect(() => {
     const msgsQuery = query(
       collection(db, "meetings", "current", "messages"),
@@ -73,16 +73,12 @@ export default function Meet() {
       setMessages(arr);
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
 
-      // update users list dynamically
-      const allUsers = arr
-        .filter(m => m.username && m.type === "user")
-        .map(m => m.username);
+      const allUsers = arr.filter(m => m.username && m.type === "user").map(m => m.username);
       setUsers([...new Set(allUsers)]);
     });
     return () => unsub();
   }, []);
 
-  // Typing indicator
   useEffect(() => {
     const typingRef = doc(db, "meetings", "current", "typing", username);
     let timeout;
@@ -96,7 +92,6 @@ export default function Meet() {
     return () => clearTimeout(timeout);
   }, [msg]);
 
-  // Load typing users
   useEffect(() => {
     const typingColl = collection(db, "meetings", "current", "typing");
     const unsub = onSnapshot(typingColl, snap => {
@@ -110,7 +105,9 @@ export default function Meet() {
     return () => unsub();
   }, []);
 
-  // Join / Leave
+  // =====================================
+  // Actions: join, leave, end, send message
+  // =====================================
   const joinMeeting = async () => {
     await addDoc(collection(meetingDocRef, "messages"), {
       username: "system",
@@ -132,10 +129,8 @@ export default function Meet() {
   };
 
   const endMeeting = async () => {
-    // delete all messages
     const msgsSnap = await getDocs(collection(meetingDocRef, "messages"));
     msgsSnap.forEach(docSnap => deleteDoc(doc(db, "meetings", "current", "messages", docSnap.id)));
-    // set meeting inactive
     await updateDoc(meetingDocRef, { active: false, endedAt: serverTimestamp() });
     setShowChat(false);
   };
@@ -143,7 +138,6 @@ export default function Meet() {
   const sendMessage = async e => {
     e.preventDefault();
     if (!msg.trim() && !imageBase64) return;
-
     await addDoc(collection(meetingDocRef, "messages"), {
       username,
       text: msg.trim(),
@@ -169,6 +163,9 @@ export default function Meet() {
     reader.readAsDataURL(file);
   };
 
+  // =====================================
+  // RENDER
+  // =====================================
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -186,9 +183,7 @@ export default function Meet() {
               <>
                 <strong>Active Meeting</strong>
                 <div>Host: {meeting.hostUsername}</div>
-                <div>
-                  Started: {meeting.startedAt ? meeting.startedAt.toLocaleString() : "recent"}
-                </div>
+                <div>Started: {meeting.startedAt ? meeting.startedAt.toLocaleString() : "recent"}</div>
               </>
             ) : (
               <strong className={styles.noMeeting}>No meeting today</strong>
@@ -197,37 +192,27 @@ export default function Meet() {
 
           <div className={styles.controls}>
             {username === meeting.hostUsername ? (
-              <>
-                {meeting.active ? (
-                  <>
-                    <button className={styles.endBtn} onClick={endMeeting}>
-                      <FaStop /> End Meeting
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    className={styles.launchBtn}
-                    onClick={async () => {
-                      await setDoc(meetingDocRef, {
-                        active: true,
-                        hostUsername: username,
-                        startedAt: serverTimestamp()
-                      }, { merge: true });
-                      setShowChat(true);
-                    }}
-                  >
-                    <FaVideo /> Launch Meeting
-                  </button>
-                )}
-              </>
+              meeting.active ? (
+                <button className={styles.endBtn} onClick={endMeeting}><FaStop /> End Meeting</button>
+              ) : (
+                <button
+                  className={styles.launchBtn}
+                  onClick={async () => {
+                    await setDoc(meetingDocRef, {
+                      active: true,
+                      hostUsername: username,
+                      startedAt: serverTimestamp()
+                    }, { merge: true });
+                    setShowChat(true);
+                  }}
+                >
+                  <FaVideo /> Launch Meeting
+                </button>
+              )
             ) : meeting.active ? (
               <>
-                <button className={styles.joinBtn} onClick={joinMeeting}>
-                  Join Meeting
-                </button>
-                <button className={styles.leaveBtn} onClick={leaveMeeting}>
-                  <FaSignOutAlt /> Leave Meeting
-                </button>
+                <button className={styles.joinBtn} onClick={joinMeeting}>Join Meeting</button>
+                <button className={styles.leaveBtn} onClick={leaveMeeting}><FaSignOutAlt /> Leave Meeting</button>
               </>
             ) : null}
           </div>
@@ -246,9 +231,7 @@ export default function Meet() {
                 >
                   <option value="">-- None --</option>
                   {users.filter(u => u !== username).map(u => (
-                    <option key={u} value={u}>
-                      {u}
-                    </option>
+                    <option key={u} value={u}>{u}</option>
                   ))}
                 </select>
               </div>
@@ -260,9 +243,7 @@ export default function Meet() {
                 return (
                   <div
                     key={m.id}
-                    className={`${styles.msg} ${
-                      m.username === username ? styles.myMsg : ""
-                    } ${m.type === "system" ? styles.systemMsg : ""}`}
+                    className={`${styles.msg} ${m.username === username ? styles.myMsg : ""} ${m.type === "system" ? styles.systemMsg : ""}`}
                   >
                     <div className={styles.msgMeta}>
                       <strong>{m.username}</strong>
@@ -295,13 +276,27 @@ export default function Meet() {
                 <input type="file" accept="image/*" onChange={handleImageUpload} />
               </label>
               {imagePreview && <img src={imagePreview} className={styles.preview} />}
-              <button className={styles.sendBtn}>
-                <FaPaperPlane />
-              </button>
+              <button className={styles.sendBtn}><FaPaperPlane /></button>
             </form>
           </section>
         )}
       </main>
     </div>
   );
+}
+
+// =====================================
+// SSR: Fetch username from cookies
+// =====================================
+export async function getServerSideProps(context) {
+  const cookies = context.req.headers.cookie ? parse(context.req.headers.cookie) : {};
+  const username = cookies.username || null;
+
+  if (!username) {
+    return {
+      redirect: { destination: "/login", permanent: false }
+    };
+  }
+
+  return { props: { initialUsername: username } };
 }
