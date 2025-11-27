@@ -1,40 +1,63 @@
+/* ===== GLOBAL LAYOUT ===== */
 .container {
   max-width: 1200px;
   margin: auto;
-  padding: 10px;
-  font-family: sans-serif;
+  padding: 15px;
+  font-family: 'Inter', sans-serif;
+  color: #333;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
-  flex-wrap: wrap;
   align-items: center;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #eee;
   margin-bottom: 15px;
+}
+
+.header h1 {
+  font-size: 1.8rem;
+  color: #2575fc;
 }
 
 .userBox {
   display: flex;
-  gap: 5px;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
 }
 
 .usernameInput {
-  padding: 5px 8px;
-  border-radius: 5px;
+  padding: 6px 10px;
+  border-radius: 8px;
   border: 1px solid #ccc;
+  outline: none;
+  font-size: 0.95rem;
+}
+
+.usernameInput:focus {
+  border-color: #2575fc;
+  box-shadow: 0 0 4px rgba(37, 117, 252, 0.5);
 }
 
 .smallBtn {
-  padding: 5px 10px;
+  padding: 6px 12px;
   background: #2575fc;
-  color: white;
+  color: #fff;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
+  font-size: 0.95rem;
+  transition: background 0.3s;
 }
 
+.smallBtn:hover {
+  background: #1a5dc9;
+}
+
+/* ===== MEETING CARD ===== */
 .main {
   display: flex;
   flex-direction: column;
@@ -42,85 +65,146 @@
 }
 
 .meetingCard {
-  border: 1px solid #ccc;
-  border-radius: 10px;
-  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 15px 20px;
+  background: #f8f9fa;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: #f5f5f5;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
 }
 
 .meetingInfo strong {
-  font-size: 18px;
+  font-size: 1.2rem;
+  display: block;
+  margin-bottom: 5px;
+  color: #2575fc;
+}
+
+.meetingInfo div {
+  font-size: 0.95rem;
+}
+
+.noMeeting {
+  color: #999;
+}
+
+/* ===== BUTTONS ===== */
+.controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .controls button {
-  margin-right: 5px;
-  padding: 8px 12px;
+  padding: 8px 15px;
+  border-radius: 10px;
   border: none;
-  border-radius: 5px;
   cursor: pointer;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s;
 }
 
 .launchBtn {
   background: #28a745;
   color: white;
 }
+.launchBtn:hover {
+  background: #218838;
+}
 
 .joinBtn {
   background: #2575fc;
   color: white;
+}
+.joinBtn:hover {
+  background: #1a5dc9;
 }
 
 .endBtn {
   background: #dc3545;
   color: white;
 }
+.endBtn:hover {
+  background: #b52b34;
+}
 
 .leaveBtn {
   background: #ffc107;
   color: black;
 }
+.leaveBtn:hover {
+  background: #e6b800;
+}
 
+.noMeetingSmall {
+  color: #999;
+  font-size: 0.95rem;
+}
+
+/* ===== CHAT SECTION ===== */
 .chatSection {
-  border: 1px solid #ccc;
-  border-radius: 10px;
-  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   background: #fff;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
 }
 
+/* CHAT HEADER */
 .chatHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chatHeader h2 {
+  font-size: 1.2rem;
+  color: #2575fc;
+  margin: 0;
 }
 
 .privateInput {
-  padding: 5px 8px;
-  border-radius: 5px;
+  padding: 5px 10px;
+  border-radius: 8px;
   border: 1px solid #ccc;
-  margin-top: 5px;
+  outline: none;
+  font-size: 0.9rem;
+}
+.privateInput:focus {
+  border-color: #2575fc;
+  box-shadow: 0 0 4px rgba(37,117,252,0.3);
 }
 
+/* MESSAGES AREA */
 .messages {
-  max-height: 400px;
+  max-height: 450px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding-right: 5px;
 }
 
+/* INDIVIDUAL MESSAGE */
 .msg {
-  padding: 5px 8px;
-  border-radius: 5px;
-  background: #e9ecef;
-  max-width: 70%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #f1f3f5;
+  max-width: 75%;
   word-wrap: break-word;
+  position: relative;
+  font-size: 0.95rem;
 }
 
 .myMsg {
@@ -130,8 +214,9 @@
 
 .systemMsg {
   background: #f8d7da;
-  text-align: center;
+  align-self: center;
   max-width: 100%;
+  text-align: center;
 }
 
 .hiddenMsg {
@@ -139,54 +224,110 @@
 }
 
 .msgMeta {
-  font-size: 12px;
-  margin-bottom: 2px;
+  font-size: 0.8rem;
+  margin-bottom: 3px;
+  color: #555;
 }
 
 .toUser {
-  font-size: 11px;
-  color: #555;
-  margin-left: 3px;
+  font-size: 0.75rem;
+  color: #333;
+  margin-left: 4px;
 }
 
 .msgBody img {
-  max-width: 150px;
-  max-height: 150px;
+  max-width: 200px;
+  max-height: 200px;
   display: block;
   margin-top: 5px;
-  border-radius: 5px;
+  border-radius: 10px;
+  object-fit: cover;
 }
 
+/* INPUT ROW */
 .inputRow {
   display: flex;
   gap: 5px;
+  align-items: center;
   flex-wrap: wrap;
 }
 
 .inputRow input[type="text"] {
   flex: 1;
-  padding: 5px 8px;
-  border-radius: 5px;
+  padding: 8px 12px;
+  border-radius: 10px;
   border: 1px solid #ccc;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.inputRow input[type="text"]:focus {
+  border-color: #2575fc;
+  box-shadow: 0 0 5px rgba(37,117,252,0.3);
 }
 
 .sendBtn, .imageLabel {
-  padding: 5px 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
   background: #2575fc;
   color: white;
-  border-radius: 5px;
-  cursor: pointer;
+  font-size: 1rem;
   display: flex;
   align-items: center;
+  transition: background 0.3s;
+}
+
+.sendBtn:hover, .imageLabel:hover {
+  background: #1a5dc9;
 }
 
 .imageLabel input {
   display: none;
 }
 
-/* Responsive */
-@media(max-width: 768px) {
+/* RESPONSIVE */
+@media (max-width: 768px) {
   .meetingCard, .chatSection {
-    max-width: 100%;
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .inputRow {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .inputRow input[type="text"] {
+    width: 100%;
+  }
+
+  .controls button {
+    width: 100%;
+  }
+
+  .messages {
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header h1 {
+    font-size: 1.4rem;
+  }
+
+  .meetingInfo strong {
+    font-size: 1rem;
+  }
+
+  .msg {
+    max-width: 85%;
+    font-size: 0.9rem;
+  }
+
+  .msgBody img {
+    max-width: 150px;
+    max-height: 150px;
   }
 }
