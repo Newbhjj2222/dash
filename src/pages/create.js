@@ -224,6 +224,7 @@ export default function CreateStoryPage() {
             <option value="Action">Action</option>
             <option value="Drama">Drama</option>
             <option value="Comedy">Comedy</option>
+            <option value="Sex Story">Sex Story</option>
             <option value="Love-Story">Love-story</option>
             <option value="Horror">Horror</option>
             <option value="Sci-Fi">Sci-Fi</option>
