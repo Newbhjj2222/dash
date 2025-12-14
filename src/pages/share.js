@@ -3,53 +3,80 @@
 import React, { useEffect, useState } from "react";
 import styles from "@/styles/share.module.css";
 import { db } from "@/components/firebase";
-import { collection, getDocs, query, where, doc, updateDoc, increment, setDoc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  doc,
+  updateDoc,
+  increment,
+  setDoc,
+  getDoc,
+} from "firebase/firestore";
 import Cookies from "js-cookie";
 import Net from "@/components/Net";
 
-export default function SharePage(props) {
-  // ================================
-  // CLEAN USERNAME
-  // ================================
-  const cleanUsername = decodeURIComponent(props.username || "");
+/* ================================
+   USERNAME SANITIZER (GLOBAL)
+================================ */
+const sanitizeUsername = (value = "") => {
+  try {
+    let name = decodeURIComponent(value);
+    name = name
+      .replace(/[^a-zA-Z0-9\s]/g, "") // %, $, @, +
+      .replace(/\s+/g, " ")
+      .trim();
+    return name;
+  } catch {
+    return value.replace(/[^a-zA-Z0-9\s]/g, "").trim();
+  }
+};
 
-  const postsData = props.postsData || [];
-  const [sharesCount, setSharesCount] = useState(props.initialSharesCounts || {});
-  const [totalShares, setTotalShares] = useState(props.initialTotalShares || 0);
+export default function SharePage({
+  username,
+  postsData = [],
+  initialSharesCounts = {},
+  initialTotalShares = 0,
+}) {
+  const cleanUsername = sanitizeUsername(username);
+
+  const [sharesCount, setSharesCount] = useState(initialSharesCounts);
+  const [totalShares, setTotalShares] = useState(initialTotalShares);
   const [message, setMessage] = useState("");
   const [messageVisible, setMessageVisible] = useState(false);
 
-  // Debug (optional)
+  /* ---------------- DEBUG (optional) ---------------- */
   useEffect(() => {
     const raw = Cookies.get("username");
     if (raw) {
-      console.log("Raw cookie username:", raw);
-      console.log("Decoded username:", decodeURIComponent(raw));
+      console.log("Raw cookie:", raw);
+      console.log("Sanitized:", sanitizeUsername(raw));
     }
   }, []);
 
-  // ================================
-  // COPY & SHARE HANDLER
-  // ================================
+  /* ================================
+     COPY & SHARE HANDLER
+  ================================ */
   const handleShare = async (postId, head, summary) => {
     if (!cleanUsername) {
-      setMessage("No username found. Please login.");
-      setMessageVisible(true);
-      setTimeout(() => setMessageVisible(false), 4000);
+      showTempMessage("❌ No username found. Please login.");
       return;
     }
 
     const shareDocRef = doc(db, "shares", cleanUsername);
-    const shareLink = `https://www.newtalentsg.co.rw/post/${postId}`;
+    const shareLink = `www.newtalentsg.co.rw/post/${postId}`;
+    const textToCopy = `${head}\n ${summary}\nkanda aha usome iyi Nkuru yose: ${shareLink}`;
+
     let copied = false;
 
     try {
-      await navigator.clipboard.writeText(`Title: ${head}\nSummary: ${summary}\nLink: ${shareLink}`);
+      await navigator.clipboard.writeText(textToCopy);
       copied = true;
     } catch {
       try {
         const ta = document.createElement("textarea");
-        ta.value = `Title: ${head}\nSummary: ${summary}\nLink: ${shareLink}`;
+        ta.value = textToCopy;
         document.body.appendChild(ta);
         ta.select();
         document.execCommand("copy");
@@ -60,29 +87,32 @@ export default function SharePage(props) {
       }
     }
 
-    setMessage(
+    showTempMessage(
       copied
-        ? `✅ Link copied successfully!\n\nTitle: ${head}\nSummary: ${summary}\nLink: ${shareLink}`
-        : `❌ Failed to copy link.\n\nTitle: ${head}\nSummary: ${summary}\nLink: ${shareLink}`
+        ? `✅ Link copied successfully!\n\n${textToCopy}`
+        : `❌ Failed to copy link.\n\n${textToCopy}`,
+      6000
     );
 
-    setMessageVisible(true);
-    setTimeout(() => setMessageVisible(false), 6000);
-
-    // Firestore share counter update
+    /* -------- FIRESTORE UPDATE -------- */
     try {
       await updateDoc(shareDocRef, { [postId]: increment(1) });
     } catch {
       await setDoc(shareDocRef, { [postId]: 1 }, { merge: true });
     }
 
-    // Local state
+    /* -------- LOCAL STATE -------- */
     setSharesCount((prev) => ({
       ...prev,
-      [postId]: prev[postId] ? prev[postId] + 1 : 1
+      [postId]: (prev[postId] || 0) + 1,
     }));
-
     setTotalShares((t) => t + 1);
+  };
+
+  const showTempMessage = (msg, duration = 4000) => {
+    setMessage(msg);
+    setMessageVisible(true);
+    setTimeout(() => setMessageVisible(false), duration);
   };
 
   return (
@@ -136,7 +166,9 @@ export default function SharePage(props) {
 
                   <div className={styles.actions}>
                     <button
-                      onClick={() => handleShare(post.id, post.head, post.storySummary)}
+                      onClick={() =>
+                        handleShare(post.id, post.head, post.storySummary)
+                      }
                       className={styles.button}
                     >
                       Copy Link
@@ -152,76 +184,70 @@ export default function SharePage(props) {
   );
 }
 
-// ================================
-// SERVER SIDE – FIXED
-// ================================
+/* ================================
+   SERVER SIDE
+================================ */
 export async function getServerSideProps(context) {
   const cookie = context.req.headers.cookie || "";
-  const usernameMatch = cookie.match(/username=([^;]+)/);
+  const match = cookie.match(/username=([^;]+)/);
 
-  const rawUsername = usernameMatch ? usernameMatch[1] : null;
-  const username = rawUsername ? decodeURIComponent(rawUsername) : null;
-
-  if (!username) {
+  if (!match) {
     return { redirect: { destination: "/login", permanent: false } };
   }
 
-  // Fetch posts
+  const username = sanitizeUsername(match[1]);
+
+  /* -------- FETCH POSTS -------- */
   const postsRef = collection(db, "posts");
   const q = query(postsRef, where("author", "==", username));
-  const querySnapshot = await getDocs(q);
+  const snap = await getDocs(q);
 
-  const stripHtml = (html) => {
-    if (!html) return "";
-    const text = String(html).replace(/<[^>]*>/g, " ");
-    const collapsed = text.replace(/\s+/g, " ").trim();
-    return collapsed.length <= 500 ? collapsed : collapsed.slice(0, 300).trim() + "...";
-  };
+  const stripHtml = (html = "") =>
+    String(html)
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 300) + "...";
 
-  const toMs = (dateValue) => {
-    if (!dateValue) return 0;
-    if (dateValue?.seconds) {
-      return dateValue.seconds * 1000 + Math.floor((dateValue.nanoseconds || 0) / 1e6);
-    }
-    if (typeof dateValue === "string") return new Date(dateValue).getTime() || 0;
-    if (typeof dateValue === "number") return dateValue < 1e12 ? dateValue * 1000 : dateValue;
-    return 0;
-  };
+  const toMs = (d) =>
+    d?.seconds
+      ? d.seconds * 1000
+      : typeof d === "number"
+      ? d
+      : new Date(d).getTime() || 0;
 
-  let postsData = querySnapshot.docs.map((d) => {
-    const data = d.data();
+  let postsData = snap.docs.map((docu) => {
+    const d = docu.data();
     return {
-      id: d.id,
-      head: data.head || data.title || "Untitled",
-      storySummary: stripHtml(data.story),
-      createdAt: data.createdAt || data.created_at || data.date || null
+      id: docu.id,
+      head: d.head || d.title || "Untitled",
+      storySummary: stripHtml(d.story),
+      createdAt: d.createdAt || d.date || null,
     };
   });
 
   postsData.sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt));
 
-  // Fetch shares
+  /* -------- FETCH SHARES -------- */
   const sharesRef = doc(db, "shares", username);
   let initialSharesCounts = {};
   let initialTotalShares = 0;
 
-  try {
-    const snap = await getDoc(sharesRef);
-    if (snap.exists()) {
-      initialSharesCounts = snap.data() || {};
-      initialTotalShares = Object.values(initialSharesCounts).reduce((acc, val) => {
-        const n = typeof val === "number" ? val : parseInt(val, 10) || 0;
-        return acc + n;
-      }, 0);
-    }
-  } catch {}
+  const sharesSnap = await getDoc(sharesRef);
+  if (sharesSnap.exists()) {
+    initialSharesCounts = sharesSnap.data();
+    initialTotalShares = Object.values(initialSharesCounts).reduce(
+      (a, b) => a + (Number(b) || 0),
+      0
+    );
+  }
 
   return {
     props: {
-      postsData,
       username,
+      postsData,
       initialSharesCounts,
-      initialTotalShares
-    }
+      initialTotalShares,
+    },
   };
-}
+    }
