@@ -142,7 +142,7 @@ export async function getServerSideProps(context) {
         if (normalizedStatus.includes("monetized") || normalizedStatus.includes("approved")) {
           rwf = nes * 15;
         } else if (
-          normalizedStatus.includes("non") ||
+          normalizedStatus.includes("Non-Monitized") ||
           normalizedStatus.includes("disabled")
         ) {
           rwf = nes * 8.34;
