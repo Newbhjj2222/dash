@@ -23,11 +23,11 @@ export default function Balance({ username, nes, rwf, status }) {
       setSending(true);
 
       await setDoc(doc(db, "withdrawers", username), {
-        ame: username,
-        fone: formData.fone,
-        amount: Number(formData.amount),
-        nes,
-        rwf,
+        username,
+        phone: formData.fone,
+        nesRequested: Number(formData.amount),
+        nesTotal: nes,
+        rwfValue: rwf,
         status,
         createdAt: new Date().toISOString(),
       });
@@ -56,7 +56,6 @@ export default function Balance({ username, nes, rwf, status }) {
           <h3>NES: <span>{nes}</span></h3>
           <small>Status: {status}</small>
         </div>
-
         <div className={styles.right}>
           <h3>RWF: <span>{rwf.toLocaleString()}</span></h3>
         </div>
@@ -132,21 +131,22 @@ export async function getServerSideProps(context) {
 
       if (snap.exists()) {
         const data = snap.data();
-
         nes = Number(data.nes || 0);
         status = data.status || "Pending";
 
-        /* ===== NORMALIZE STATUS ===== */
-        const normalizedStatus = status.toLowerCase().trim();
+        /* ===== FIXED MONETIZATION LOGIC ===== */
+        const s = status.toLowerCase().trim();
 
-        if (normalizedStatus.includes("monetized") || normalizedStatus.includes("approved")) {
-          rwf = nes * 15;
-        } else if (
-          normalizedStatus.includes("Non-Monitized") ||
-          normalizedStatus.includes("disabled")
-        ) {
+        // 1️⃣ BANZA UFARE NON-MONETIZED / DISABLED
+        if (s.includes("non") || s.includes("disabled")) {
           rwf = nes * 8.34;
-        } else {
+        }
+        // 2️⃣ HANYUMA MONETIZED / APPROVED
+        else if (s.includes("monetized") || s.includes("approved")) {
+          rwf = nes * 15;
+        }
+        // 3️⃣ PENDING / IBINDI
+        else {
           rwf = 0;
         }
       }
