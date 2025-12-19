@@ -6,13 +6,14 @@ import { db } from "../components/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import Net from "../components/Net";
 
-// 🔹 Page Component
+/* ================= PAGE ================= */
 export default function Balance({ username, nes, rwf, status }) {
   const [formData, setFormData] = useState({ fone: "", amount: "" });
   const [sending, setSending] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!formData.fone || !formData.amount) {
       alert("Uzuza neza amakuru yose!");
       return;
@@ -20,44 +21,48 @@ export default function Balance({ username, nes, rwf, status }) {
 
     try {
       setSending(true);
+
       await setDoc(doc(db, "withdrawers", username), {
         ame: username,
         fone: formData.fone,
         amount: Number(formData.amount),
+        nes,
+        rwf,
         status,
-        date: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       });
 
-      alert("Ibyo wabikuje byoherejwe neza!");
+      alert("Kubikuza byoherejwe neza!");
       setFormData({ fone: "", amount: "" });
     } catch (err) {
-      console.error("Error saving withdraw request:", err);
-      alert("Habaye ikosa mukubika ibyo wabikuje.");
+      console.error("Withdraw error:", err);
+      alert("Habaye ikibazo mu kubika kubikuza.");
     } finally {
       setSending(false);
     }
   };
 
   if (!username) {
-    return <p className={styles.loading}>No username found in cookies.</p>;
+    return <p className={styles.loading}>Nta username ibonetse.</p>;
   }
 
   return (
     <div className={styles.container}>
       <Net />
 
-      {/* Header */}
+      {/* ===== HEADER ===== */}
       <div className={styles.header}>
         <div className={styles.left}>
           <h3>NES: <span>{nes}</span></h3>
           <small>Status: {status}</small>
         </div>
+
         <div className={styles.right}>
           <h3>RWF: <span>{rwf.toLocaleString()}</span></h3>
         </div>
       </div>
 
-      {/* Form */}
+      {/* ===== FORM ===== */}
       <form onSubmit={handleSubmit} className={styles.form}>
         <h2>Withdraw Form</h2>
 
@@ -87,7 +92,7 @@ export default function Balance({ username, nes, rwf, status }) {
             onChange={(e) =>
               setFormData({ ...formData, amount: e.target.value })
             }
-            placeholder="Injiza umubare wa NES ushaka kubikuza..."
+            placeholder="Injiza umubare wa NES..."
             required
           />
         </label>
@@ -127,20 +132,26 @@ export async function getServerSideProps(context) {
 
       if (snap.exists()) {
         const data = snap.data();
-        nes = data.nes || 0;
+
+        nes = Number(data.nes || 0);
         status = data.status || "Pending";
 
-        // 🔥 MONETIZATION LOGIC
-        if (status === "monetized" || status === "approved") {
+        /* ===== NORMALIZE STATUS ===== */
+        const normalizedStatus = status.toLowerCase().trim();
+
+        if (normalizedStatus.includes("monetized") || normalizedStatus.includes("approved")) {
           rwf = nes * 15;
-        } else if (status === "non-monetized" || status === "disabled") {
+        } else if (
+          normalizedStatus.includes("non") ||
+          normalizedStatus.includes("disabled")
+        ) {
           rwf = nes * 8.34;
         } else {
           rwf = 0;
         }
       }
     } catch (err) {
-      console.error("SSR Firestore error:", err);
+      console.error("SSR error:", err);
     }
   }
 
