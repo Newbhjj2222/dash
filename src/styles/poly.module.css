@@ -1,0 +1,56 @@
+.container {
+  max-width: 700px;
+  margin: 40px auto;
+  padding: 20px;
+  background: #0f172a;
+  color: white;
+  border-radius: 10px;
+}
+
+.title {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.input {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+}
+
+.answerRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.imageUpload {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1e293b;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.button {
+  background: #22c55e;
+  border: none;
+  padding: 12px;
+  border-radius: 6px;
+  color: black;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.6;
+}
