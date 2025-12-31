@@ -2,46 +2,72 @@
 
 import React, { useState } from "react";
 import styles from "../styles/balance.module.css";
-import { db } from "../components/firebase";
-import { doc, setDoc } from "firebase/firestore";
 import Net from "../components/Net";
+
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "../components/firebase";
 
 /* ================= PAGE ================= */
 export default function Balance({ username, nes, rwf, status }) {
-  const [formData, setFormData] = useState({ fone: "", amount: "" });
+  const [formData, setFormData] = useState({
+    phone: "",
+    amount: "",
+  });
+
   const [sending, setSending] = useState(false);
 
+  /* ===== SUBMIT ===== */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.fone || !formData.amount) {
+    if (!username) {
+      alert("Username ntiboneka.");
+      return;
+    }
+
+    if (!formData.phone || !formData.amount) {
       alert("Uzuza neza amakuru yose!");
+      return;
+    }
+
+    if (Number(formData.amount) <= 0) {
+      alert("Injiza NES ifite agaciro.");
       return;
     }
 
     try {
       setSending(true);
 
-      await setDoc(doc(db, "withdrawers", username), {
-        username,
-        phone: formData.fone,
+      await addDoc(collection(db, "withdrawers"), {
+        username: username,
+        phone: formData.phone,
         nesRequested: Number(formData.amount),
-        nesTotal: nes,
-        rwfValue: rwf,
-        status,
-        createdAt: new Date().toISOString(),
+        nesTotal: Number(nes),
+        rwfValue: Number(rwf),
+        status: status,
+        withdrawStatus: "pending", // NEW
+        createdAt: serverTimestamp(),
       });
 
       alert("Kubikuza byoherejwe neza!");
-      setFormData({ fone: "", amount: "" });
+
+      setFormData({
+        phone: "",
+        amount: "",
+      });
     } catch (err) {
       console.error("Withdraw error:", err);
-      alert("Habaye ikibazo mu kubika kubikuza.");
+      alert("Habaye ikibazo mu kohereza kubikuza.");
     } finally {
       setSending(false);
     }
   };
 
+  /* ===== NO USER ===== */
   if (!username) {
     return <p className={styles.loading}>Nta username ibonetse.</p>;
   }
@@ -53,11 +79,16 @@ export default function Balance({ username, nes, rwf, status }) {
       {/* ===== HEADER ===== */}
       <div className={styles.header}>
         <div className={styles.left}>
-          <h3>NES: <span>{nes}</span></h3>
+          <h3>
+            NES: <span>{nes}</span>
+          </h3>
           <small>Status: {status}</small>
         </div>
+
         <div className={styles.right}>
-          <h3>RWF: <span>{rwf.toLocaleString()}</span></h3>
+          <h3>
+            RWF: <span>{rwf.toLocaleString()}</span>
+          </h3>
         </div>
       </div>
 
@@ -66,32 +97,32 @@ export default function Balance({ username, nes, rwf, status }) {
         <h2>Withdraw Form</h2>
 
         <label>
-          Username:
+          Username
           <input type="text" value={username} disabled />
         </label>
 
         <label>
-          Phone Number:
+          Phone Number
           <input
             type="tel"
-            value={formData.fone}
+            value={formData.phone}
             onChange={(e) =>
-              setFormData({ ...formData, fone: e.target.value })
+              setFormData({ ...formData, phone: e.target.value })
             }
-            placeholder="Andika numero ya telefone..."
+            placeholder="Andika numero ya telefone"
             required
           />
         </label>
 
         <label>
-          NES Ubikuza:
+          NES Ubikuza
           <input
             type="number"
             value={formData.amount}
             onChange={(e) =>
               setFormData({ ...formData, amount: e.target.value })
             }
-            placeholder="Injiza umubare wa NES..."
+            placeholder="Injiza NES ushaka kubikuza"
             required
           />
         </label>
@@ -113,6 +144,7 @@ export default function Balance({ username, nes, rwf, status }) {
 /* ================= SSR ================= */
 export async function getServerSideProps(context) {
   const { req } = context;
+
   const cookies = req.headers.cookie || "";
   const match = cookies.match(/username=([^;]+)/);
   const username = match ? decodeURIComponent(match[1]) : null;
@@ -126,26 +158,26 @@ export async function getServerSideProps(context) {
       const { doc, getDoc } = await import("firebase/firestore");
       const { db } = await import("../components/firebase");
 
-      const authorRef = doc(db, "authors", username);
-      const snap = await getDoc(authorRef);
+      const ref = doc(db, "authors", username);
+      const snap = await getDoc(ref);
 
       if (snap.exists()) {
         const data = snap.data();
+
         nes = Number(data.nes || 0);
         status = data.status || "Pending";
 
-        /* ===== FIXED MONETIZATION LOGIC ===== */
         const s = status.toLowerCase().trim();
 
-        // 1️⃣ BANZA UFARE NON-MONETIZED / DISABLED
+        // NON-MONETIZED / DISABLED
         if (s.includes("non") || s.includes("disabled")) {
           rwf = nes * 8.34;
         }
-        // 2️⃣ HANYUMA MONETIZED / APPROVED
+        // MONETIZED / APPROVED
         else if (s.includes("monetized") || s.includes("approved")) {
           rwf = nes * 15;
         }
-        // 3️⃣ PENDING / IBINDI
+        // PENDING / OTHERS
         else {
           rwf = 0;
         }
