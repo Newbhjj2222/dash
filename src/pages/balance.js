@@ -2,32 +2,16 @@
 
 import React, { useState } from "react";
 import styles from "../styles/balance.module.css";
+import { db } from "../components/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import Net from "../components/Net";
 
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db } from "../components/firebase";
-
-/* ================= PAGE ================= */
 export default function Balance({ username, nes, rwf, status }) {
-  const [formData, setFormData] = useState({
-    phone: "",
-    amount: "",
-  });
-
+  const [formData, setFormData] = useState({ phone: "", amount: "" });
   const [sending, setSending] = useState(false);
 
-  /* ===== SUBMIT ===== */
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!username) {
-      alert("Username ntiboneka.");
-      return;
-    }
 
     if (!formData.phone || !formData.amount) {
       alert("Uzuza neza amakuru yose!");
@@ -42,32 +26,27 @@ export default function Balance({ username, nes, rwf, status }) {
     try {
       setSending(true);
 
-      await addDoc(collection(db, "withdrawers"), {
+      await setDoc(doc(db, "withdrawers", username), {
         username: username,
         phone: formData.phone,
         nesRequested: Number(formData.amount),
         nesTotal: Number(nes),
         rwfValue: Number(rwf),
         status: status,
-        withdrawStatus: "pending", // NEW
+        withdrawStatus: "pending",
         createdAt: serverTimestamp(),
       });
 
       alert("Kubikuza byoherejwe neza!");
-
-      setFormData({
-        phone: "",
-        amount: "",
-      });
+      setFormData({ phone: "", amount: "" });
     } catch (err) {
-      console.error("Withdraw error:", err);
-      alert("Habaye ikibazo mu kohereza kubikuza.");
+      console.error("Error saving withdraw request:", err);
+      alert("Habaye ikibazo mukubika ibyo wabikuje.");
     } finally {
       setSending(false);
     }
   };
 
-  /* ===== NO USER ===== */
   if (!username) {
     return <p className={styles.loading}>Nta username ibonetse.</p>;
   }
@@ -76,23 +55,18 @@ export default function Balance({ username, nes, rwf, status }) {
     <div className={styles.container}>
       <Net />
 
-      {/* ===== HEADER ===== */}
+      {/* Header */}
       <div className={styles.header}>
         <div className={styles.left}>
-          <h3>
-            NES: <span>{nes}</span>
-          </h3>
+          <h3>NES: <span>{nes}</span></h3>
           <small>Status: {status}</small>
         </div>
-
         <div className={styles.right}>
-          <h3>
-            RWF: <span>{rwf.toLocaleString()}</span>
-          </h3>
+          <h3>RWF: <span>{rwf.toLocaleString()}</span></h3>
         </div>
       </div>
 
-      {/* ===== FORM ===== */}
+      {/* Form */}
       <form onSubmit={handleSubmit} className={styles.form}>
         <h2>Withdraw Form</h2>
 
@@ -106,9 +80,7 @@ export default function Balance({ username, nes, rwf, status }) {
           <input
             type="tel"
             value={formData.phone}
-            onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             placeholder="Andika numero ya telefone"
             required
           />
@@ -119,23 +91,15 @@ export default function Balance({ username, nes, rwf, status }) {
           <input
             type="number"
             value={formData.amount}
-            onChange={(e) =>
-              setFormData({ ...formData, amount: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
             placeholder="Injiza NES ushaka kubikuza"
             required
           />
         </label>
 
-        <button type="submit" disabled={sending || rwf === 0}>
+        <button type="submit" disabled={sending}>
           {sending ? "Kohereza..." : "Ohereza Kubikuza"}
         </button>
-
-        {rwf === 0 && (
-          <p className={styles.warning}>
-            Monetization yawe iracyari Pending cyangwa Disabled.
-          </p>
-        )}
       </form>
     </div>
   );
@@ -169,16 +133,11 @@ export async function getServerSideProps(context) {
 
         const s = status.toLowerCase().trim();
 
-        // NON-MONETIZED / DISABLED
         if (s.includes("non") || s.includes("disabled")) {
           rwf = nes * 8.34;
-        }
-        // MONETIZED / APPROVED
-        else if (s.includes("monetized") || s.includes("approved")) {
+        } else if (s.includes("monetized") || s.includes("approved")) {
           rwf = nes * 15;
-        }
-        // PENDING / OTHERS
-        else {
+        } else {
           rwf = 0;
         }
       }
