@@ -63,7 +63,7 @@ export default function CreateStoryPage() {
         setFolders(userFolders);
       } catch (err) {
         console.error("Firebase Error fetching folders:", err);
-        setErrorMessage("❌ Ntibyakunze gufata folders: " + err.message);
+        setErrorMessage("❌ Firebase Error fetching folders: " + (err.message || err));
       }
     };
 
@@ -105,6 +105,11 @@ export default function CreateStoryPage() {
     e.preventDefault();
     setErrorMessage("");
 
+    if (!navigator.onLine) {
+      setErrorMessage("❌ Nta internet ihari. Reba connection yawe.");
+      return;
+    }
+
     if (episodesContent.some((ep) => !ep.trim())) {
       setErrorMessage("❌ Andika content ya buri episode!");
       return;
@@ -123,19 +128,24 @@ export default function CreateStoryPage() {
       const formData = new FormData();
       formData.append("image", imageFile);
 
-      const uploadResponse = await fetch(
-        `https://api.imgbb.com/1/upload?key=${API_KEY}`,
-        { method: "POST", body: formData }
-      );
+      let uploadResponse;
+      try {
+        uploadResponse = await fetch(
+          `https://api.imgbb.com/1/upload?key=${API_KEY}`,
+          { method: "POST", body: formData }
+        );
+      } catch (networkErr) {
+        throw new Error("Network error during ImgBB upload: " + networkErr.message);
+      }
 
       if (!uploadResponse.ok) {
         const text = await uploadResponse.text();
-        throw new Error(`ImgBB HTTP error: ${uploadResponse.status} - ${text}`);
+        throw new Error(`ImgBB HTTP error ${uploadResponse.status}: ${text}`);
       }
 
       const uploadData = await uploadResponse.json();
       if (!uploadData.success) {
-        throw new Error(`ImgBB Upload Error: ${JSON.stringify(uploadData)}`);
+        throw new Error(`ImgBB Upload failed: ${JSON.stringify(uploadData)}`);
       }
 
       const uploadedImageUrl = uploadData.data.url;
@@ -156,7 +166,7 @@ export default function CreateStoryPage() {
           season,
           monetizationStatus: "pending",
         }).catch((err) => {
-          throw new Error(`Firebase Error saving Ep ${epNumber}: ${err.message}`);
+          throw new Error(`Firebase Error saving Ep ${epNumber}: ${err.message || err}`);
         });
       });
 
@@ -167,7 +177,7 @@ export default function CreateStoryPage() {
     } catch (err) {
       console.error("Upload/Firestore Error:", err);
       setLoading(false);
-      setErrorMessage("❌ Hari ikibazo: " + err.message);
+      setErrorMessage("❌ Hari ikibazo: " + (err.message || err));
     }
   };
 
