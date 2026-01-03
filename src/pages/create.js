@@ -49,6 +49,7 @@ export default function CreateStoryPage() {
   // 🟢 SSR - Fata folders z'umukoresha
   useEffect(() => {
     if (!username) return;
+
     const fetchFolders = async () => {
       try {
         const qSnap = await getDocs(collection(db, "folders"));
@@ -61,10 +62,11 @@ export default function CreateStoryPage() {
         });
         setFolders(userFolders);
       } catch (err) {
-        console.error("Error fetching folders:", err);
-        setErrorMessage("Ntibyakunze gufata folders: " + err.message);
+        console.error("Firebase Error fetching folders:", err);
+        setErrorMessage("❌ Ntibyakunze gufata folders: " + err.message);
       }
     };
+
     fetchFolders();
   }, [username, db]);
 
@@ -85,11 +87,11 @@ export default function CreateStoryPage() {
     setErrorMessage("");
 
     if (!head || !folder || categories.length === 0 || !imageFile) {
-      setErrorMessage("Wuzuza amakuru yose!");
+      setErrorMessage("❌ Wuzuza amakuru yose!");
       return;
     }
     if (fromEp > toEp) {
-      setErrorMessage("From ntigomba kurenza To!");
+      setErrorMessage("❌ From ntigomba kurenza To!");
       return;
     }
 
@@ -104,12 +106,12 @@ export default function CreateStoryPage() {
     setErrorMessage("");
 
     if (episodesContent.some((ep) => !ep.trim())) {
-      setErrorMessage("Andika content ya buri episode!");
+      setErrorMessage("❌ Andika content ya buri episode!");
       return;
     }
 
     if (!imageFile) {
-      setErrorMessage("Ntufite ifoto wahisemo!");
+      setErrorMessage("❌ Ntufite ifoto wahisemo!");
       return;
     }
 
@@ -126,9 +128,14 @@ export default function CreateStoryPage() {
         { method: "POST", body: formData }
       );
 
+      if (!uploadResponse.ok) {
+        const text = await uploadResponse.text();
+        throw new Error(`ImgBB HTTP error: ${uploadResponse.status} - ${text}`);
+      }
+
       const uploadData = await uploadResponse.json();
       if (!uploadData.success) {
-        throw new Error("Error uploading image to ImgBB");
+        throw new Error(`ImgBB Upload Error: ${JSON.stringify(uploadData)}`);
       }
 
       const uploadedImageUrl = uploadData.data.url;
@@ -148,6 +155,8 @@ export default function CreateStoryPage() {
           episodeNumber: epNumber,
           season,
           monetizationStatus: "pending",
+        }).catch((err) => {
+          throw new Error(`Firebase Error saving Ep ${epNumber}: ${err.message}`);
         });
       });
 
@@ -156,9 +165,9 @@ export default function CreateStoryPage() {
       alert("✅ Inkuru zose zoherejwe neza!");
       router.push("/");
     } catch (err) {
-      console.error("Firestore Error:", err);
+      console.error("Upload/Firestore Error:", err);
       setLoading(false);
-      setErrorMessage("Hari ikibazo: " + err.message);
+      setErrorMessage("❌ Hari ikibazo: " + err.message);
     }
   };
 
@@ -221,20 +230,13 @@ export default function CreateStoryPage() {
             onChange={handleCategoryChange}
             className={styles.select}
           >
-            <option value="Action">Action</option>
-            <option value="Drama">Drama</option>
-            <option value="Comedy">Comedy</option>
-            <option value="Sex Story">Sex Story</option>
-            <option value="Love-Story">Love-story</option>
-            <option value="Horror">Horror</option>
-            <option value="Sci-Fi">Sci-Fi</option>
-            <option value="Fantasy">Fantasy</option>
-            <option value="Historical">Historical</option>
-            <option value="Kingdom">Kingdom</option>
-            <option value="Children">Children</option>
-            <option value="Educational">Educational</option>
-            <option value="Crime">Crime</option>
-            <option value="Political">Political</option>
+            {[
+              "Action", "Drama", "Comedy", "Sex Story", "Love-Story", "Horror",
+              "Sci-Fi", "Fantasy", "Historical", "Kingdom", "Children",
+              "Educational", "Crime", "Political"
+            ].map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
           </select>
 
           <div className={styles.tagsPreview}>
