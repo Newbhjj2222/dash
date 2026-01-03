@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -100,6 +101,35 @@ export default function CreateStoryPage() {
     setStep(2);
   };
 
+  // 🟢 Function yo kohereza image kuri Cloudinary
+  const uploadToCloudinary = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "ml_default"); // replace na preset yawe niba itandukanye
+    formData.append("cloud_name", "dilowy3fd");
+
+    const endpoint =
+      "https://api.cloudinary.com/v1_1/dilowy3fd/image/upload";
+
+    const res = await fetch(endpoint, {
+      method: "POST",
+      body: formData,
+    });
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (jsonErr) {
+      throw new Error(`Cloudinary JSON parse error: ${jsonErr.message || jsonErr}`);
+    }
+
+    if (!res.ok || !data.secure_url) {
+      throw new Error(`Cloudinary upload failed: ${JSON.stringify(data)}`);
+    }
+
+    return data.secure_url;
+  };
+
   // 🟢 Step 2 handler — Upload Image + Bika muri Firestore
   const handleStep2 = async (e) => {
     e.preventDefault();
@@ -123,32 +153,8 @@ export default function CreateStoryPage() {
     setLoading(true);
 
     try {
-      // 1️⃣ Upload image to ImgBB
-      const API_KEY = "d3b627c6d75013b8aaf2aac6de73dcb5";
-      const formData = new FormData();
-      formData.append("image", imageFile);
-
-      let uploadResponse;
-      try {
-        uploadResponse = await fetch(
-          `https://api.imgbb.com/1/upload?key=${API_KEY}`,
-          { method: "POST", body: formData }
-        );
-      } catch (networkErr) {
-        throw new Error("Network error during ImgBB upload: " + networkErr.message);
-      }
-
-      if (!uploadResponse.ok) {
-        const text = await uploadResponse.text();
-        throw new Error(`ImgBB HTTP error ${uploadResponse.status}: ${text}`);
-      }
-
-      const uploadData = await uploadResponse.json();
-      if (!uploadData.success) {
-        throw new Error(`ImgBB Upload failed: ${JSON.stringify(uploadData)}`);
-      }
-
-      const uploadedImageUrl = uploadData.data.url;
+      // 1️⃣ Upload image to Cloudinary
+      const uploadedImageUrl = await uploadToCloudinary(imageFile);
 
       // 2️⃣ Save all episodes to Firestore
       const promises = episodesContent.map((content, index) => {
@@ -166,7 +172,7 @@ export default function CreateStoryPage() {
           season,
           monetizationStatus: "pending",
         }).catch((err) => {
-          throw new Error(`Firebase Error saving Ep ${epNumber}: ${err.message || err}`);
+          throw new Error(`Firebase Error saving Ep ${epNumber}: ${err.message || JSON.stringify(err)}`);
         });
       });
 
@@ -175,9 +181,9 @@ export default function CreateStoryPage() {
       alert("✅ Inkuru zose zoherejwe neza!");
       router.push("/");
     } catch (err) {
-      console.error("Upload/Firestore Error:", err);
+      console.error("Cloudinary/Firestore Error:", err);
       setLoading(false);
-      setErrorMessage("❌ Hari ikibazo: " + (err.message || err));
+      setErrorMessage("❌ Hari ikibazo: " + (err.message || JSON.stringify(err)));
     }
   };
 
@@ -241,7 +247,7 @@ export default function CreateStoryPage() {
             className={styles.select}
           >
             {[
-              "Action", "Drama", "Comedy", "Sex Story", "Love-Story", "Horror",
+              "Action", "Drama", "Comedy", "Sex 🔞Story", "Love-Story", "Horror",
               "Sci-Fi", "Fantasy", "Historical", "Kingdom", "Children",
               "Educational", "Crime", "Political"
             ].map((cat) => (
