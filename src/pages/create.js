@@ -105,7 +105,7 @@ export default function CreateStoryPage() {
   const uploadToCloudinary = async (file) => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", "ml_default"); // replace na preset yawe niba itandukanye
+    formData.append("upload_preset", "Newtalents"); // replace na preset yawe niba itandukanye
     formData.append("cloud_name", "dilowy3fd");
 
     const endpoint =
