@@ -1,68 +1,105 @@
 // pages/index.js
 import React, { useState, useEffect } from "react";
-import { db } from "@/components/firebase";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import * as cookie from "cookie";
 import {
   collection,
   getDocs,
   query,
   where,
   orderBy,
-  startAfter,
   limit,
+  startAfter,
   doc,
   deleteDoc,
 } from "firebase/firestore";
-import Head from "next/head";
-import * as cookie from "cookie";
+import { db } from "@/components/firebase";
 import styles from "@/styles/index.module.css";
-import { useRouter } from "next/router";
 import Net from "../components/Net";
 import Card from "@/components/Card";
 import { FaEye, FaComments, FaEdit, FaTrash } from "react-icons/fa";
 
-const stripHTML = (html) => (html ? html.replace(/<[^>]*>/g, "") : "");
+/* ======================
+   HELPERS
+====================== */
+const stripHTML = (html = "") => html.replace(/<[^>]*>/g, "");
 
-export default function Home({ initialPosts, totalPosts: initialTotalPosts, totalViews: initialTotalViews, username }) {
+/* ======================
+   PAGE
+====================== */
+export default function Home({
+  initialPosts,
+  totalPosts: initialTotalPosts,
+  totalViews: initialTotalViews,
+  username,
+}) {
   const router = useRouter();
+
   const [posts, setPosts] = useState(initialPosts);
-  const [lastDoc, setLastDoc] = useState(initialPosts.length > 0 ? initialPosts[initialPosts.length - 1].docRef : null);
+  const [lastDoc, setLastDoc] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(initialPosts.length >= 40);
+  const [hasMore, setHasMore] = useState(initialPosts.length === 40);
+  const [search, setSearch] = useState("");
   const [loadingComments, setLoadingComments] = useState({});
   const [totalPosts, setTotalPosts] = useState(initialTotalPosts);
   const [totalViews, setTotalViews] = useState(initialTotalViews);
-  const [search, setSearch] = useState("");
 
-  const filteredPosts = posts.filter(p => p.head.toLowerCase().includes(search.toLowerCase()));
-
-  // Lazy load comments automatically
+  /* ======================
+     LOAD COMMENTS (ONCE)
+  ====================== */
   useEffect(() => {
-    posts.forEach(post => {
-      if (post.commentsLoaded) return;
+    const loadComments = async () => {
+      for (const post of posts) {
+        if (post.commentsLoaded) continue;
 
-      setLoadingComments(prev => ({ ...prev, [post.id]: true }));
+        setLoadingComments((p) => ({ ...p, [post.id]: true }));
 
-      const fetchComments = async () => {
         try {
-          const commentsRef = collection(db, "posts", post.id, "comments");
-          const commentsSnap = await getDocs(commentsRef);
-          const comments = commentsSnap.docs.map(c => ({
-            id: c.id,
-            author: c.data().author || "Unknown",
-            text: c.data().text || "",
+          const ref = collection(db, "posts", post.id, "comments");
+          const snap = await getDocs(ref);
+
+          const comments = snap.docs.map((d) => ({
+            id: d.id,
+            author: d.data().author || "Unknown",
+            text: d.data().text || "",
           }));
 
-          setPosts(prev => prev.map(p => p.id === post.id ? { ...p, comments, totalComments: comments.length, commentsLoaded: true } : p));
+          setPosts((prev) =>
+            prev.map((p) =>
+              p.id === post.id
+                ? {
+                    ...p,
+                    comments,
+                    totalComments: comments.length,
+                    commentsLoaded: true,
+                  }
+                : p
+            )
+          );
         } catch (err) {
-          console.error("Error loading comments:", err);
+          console.error("Comments error:", err);
         } finally {
-          setLoadingComments(prev => ({ ...prev, [post.id]: false }));
+          setLoadingComments((p) => ({ ...p, [post.id]: false }));
         }
-      };
+      }
+    };
 
-      fetchComments();
-    });
-  }, [posts]);
+    loadComments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ======================
+     FILTER
+  ====================== */
+  const filteredPosts = posts.filter((p) =>
+    (p.head || "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  /* ======================
+     ACTIONS
+  ====================== */
+  const handleEdit = (id) => router.push(`/Editor?id=${id}`);
 
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this post?")) return;
@@ -70,47 +107,48 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
     try {
       const commentsRef = collection(db, "posts", id, "comments");
       const commentsSnap = await getDocs(commentsRef);
+
       for (const c of commentsSnap.docs) {
         await deleteDoc(doc(db, "posts", id, "comments", c.id));
       }
 
       await deleteDoc(doc(db, "posts", id));
-      const deletedPost = posts.find(p => p.id === id);
-      setPosts(prev => prev.filter(p => p.id !== id));
-      setTotalPosts(prev => prev - 1);
-      setTotalViews(prev => prev - (deletedPost?.views || 0));
 
-      alert("Post deleted successfully.");
+      const deleted = posts.find((p) => p.id === id);
+
+      setPosts((prev) => prev.filter((p) => p.id !== id));
+      setTotalPosts((p) => p - 1);
+      setTotalViews((v) => v - (deleted?.views || 0));
+
+      alert("Post deleted");
     } catch (err) {
       console.error(err);
-      alert("Error deleting post.");
+      alert("Error deleting post");
     }
   };
 
-  const handleEdit = (id) => router.push(`/Editor?id=${id}`);
-
+  /* ======================
+     LOAD MORE
+  ====================== */
   const loadMorePosts = async () => {
-    if (!hasMore) return;
+    if (!hasMore || loadingMore) return;
+
     setLoadingMore(true);
 
     try {
-      const postsRef = collection(db, "posts");
+      const ref = collection(db, "posts");
+
       const q = query(
-        postsRef,
+        ref,
         where("author", "==", username),
         orderBy("createdAt", "desc"),
-        startAfter(posts[posts.length - 1].createdAt),
+        startAfter(lastDoc),
         limit(40)
       );
 
-      const snapshot = await getDocs(q);
-      if (snapshot.empty) {
-        setHasMore(false);
-        setLoadingMore(false);
-        return;
-      }
+      const snap = await getDocs(q);
 
-      const newPosts = snapshot.docs.map(d => {
+      const newPosts = snap.docs.map((d) => {
         const data = d.data();
         return {
           id: d.id,
@@ -119,155 +157,168 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
           category: data.categories || "",
           image: data.imageUrl || null,
           views: data.views || 0,
-          totalComments: 0,
           comments: [],
+          totalComments: 0,
           commentsLoaded: false,
-          createdAt: data.createdAt,
-          docRef: d,
         };
       });
 
-      setPosts(prev => [...prev, ...newPosts]);
-      setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-      setHasMore(snapshot.docs.length === 40);
+      setPosts((prev) => [...prev, ...newPosts]);
+      setLastDoc(snap.docs[snap.docs.length - 1]);
+      setHasMore(snap.docs.length === 40);
     } catch (err) {
       console.error("Pagination error:", err);
+    } finally {
+      setLoadingMore(false);
     }
-
-    setLoadingMore(false);
   };
 
+  /* ======================
+     RENDER
+  ====================== */
   return (
-  <>
-    <Head>
-      <title>Author Dashboard</title>
-    </Head>
-    <div className={styles.container}>
-      <Net />
-      <Card />
+    <>
+      <Head>
+        <title>Author Dashboard</title>
+      </Head>
 
-      {/* CARDS */}
-      <div className={styles.cards}>
-        <div className={styles.card}>
-          <h3>Total Posts</h3>
-          <p>{totalPosts}</p>
-        </div>
-        <div className={styles.card}>
-          <h3>Total Views</h3>
-          <p>{totalViews}</p>
-        </div>
-      </div>
+      <div className={styles.container}>
+        <Net />
+        <Card />
 
-      {/* SEARCH */}
-      <input
-        type="text"
-        placeholder="Search posts..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className={styles.search}
-      />
-
-      {/* POSTS LIST */}
-      <div className={styles.postsList}>
-        {filteredPosts.map((post) => (
-          <div key={post.id} className={styles.postCard}>
-            {post.image && (
-              <img
-                src={post.image}
-                alt={post.head}
-                className={styles.postImage}
-              />
-            )}
-            <h2 className={styles.postHead}>{post.head}</h2>
-            <p className={styles.postSummary}>
-              {stripHTML(post.story).slice(0, 400)}
-              {post.story.length > 400 ? "..." : ""}
-            </p>
-            <p className={styles.postCategory}>
-              <strong>Category:</strong> {post.category}
-            </p>
-            <p className={styles.postStats}>
-              <FaEye /> {post.views} &nbsp;&nbsp;
-              <FaComments /> {loadingComments[post.id] ? "Loading..." : post.totalComments || 0}
-            </p>
-
-            <div className={styles.actions}>
-              <button
-                className={styles.editBtn}
-                onClick={() => handleEdit(post.id)}
-              >
-                <FaEdit /> Edit
-              </button>
-              <button
-                className={styles.deleteBtn}
-                onClick={() => handleDelete(post.id)}
-              >
-                <FaTrash /> Delete
-              </button>
-            </div>
-
-            {/* COMMENTS LIST */}
-            {post.commentsLoaded && post.comments.length > 0 && (
-              <div className={styles.commentsList}>
-                {post.comments.map((c) => (
-                  <div key={c.id} className={styles.commentCard}>
-                    <strong>{c.author}:</strong> {c.text}
-                  </div>
-                ))}
-              </div>
-            )}
+        {/* STATS */}
+        <div className={styles.cards}>
+          <div className={styles.card}>
+            <h3>Total Posts</h3>
+            <p>{totalPosts}</p>
           </div>
-        ))}
-      </div>
+          <div className={styles.card}>
+            <h3>Total Views</h3>
+            <p>{totalViews}</p>
+          </div>
+        </div>
 
-      {/* LOAD MORE */}
-      {hasMore && (
-        <button
-          className={styles.loadMoreBtn}
-          onClick={loadMorePosts}
-          disabled={loadingMore}
-        >
-          {loadingMore ? "Loading..." : "Reba izindi"}
-        </button>
-      )}
-    </div>
-  </>
-);
+        {/* SEARCH */}
+        <input
+          className={styles.search}
+          placeholder="Search posts..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
+        {/* POSTS */}
+        <div className={styles.postsList}>
+          {filteredPosts.map((post) => (
+            <div key={post.id} className={styles.postCard}>
+              {post.image && (
+                <img src={post.image} className={styles.postImage} alt="" />
+              )}
+
+              <h2>{post.head}</h2>
+
+              <p>
+                {stripHTML(post.story).slice(0, 400)}
+                {post.story.length > 400 && "..."}
+              </p>
+
+              <p>
+                <strong>Category:</strong> {post.category}
+              </p>
+
+              <p>
+                <FaEye /> {post.views} &nbsp;&nbsp;
+                <FaComments />{" "}
+                {loadingComments[post.id]
+                  ? "Loading..."
+                  : post.totalComments}
+              </p>
+
+              <div className={styles.actions}>
+                <button onClick={() => handleEdit(post.id)}>
+                  <FaEdit /> Edit
+                </button>
+                <button onClick={() => handleDelete(post.id)}>
+                  <FaTrash /> Delete
+                </button>
+              </div>
+
+              {post.commentsLoaded && post.comments.length > 0 && (
+                <div className={styles.commentsList}>
+                  {post.comments.map((c) => (
+                    <div key={c.id}>
+                      <strong>{c.author}:</strong> {c.text}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* LOAD MORE */}
+        {hasMore && (
+          <button
+            className={styles.loadMoreBtn}
+            onClick={loadMorePosts}
+            disabled={loadingMore}
+          >
+            {loadingMore ? "Loading..." : "Reba izindi"}
+          </button>
+        )}
+      </div>
+    </>
+  );
 }
 
-// SERVER-SIDE PROPS
+/* ======================
+   SERVER SIDE
+====================== */
 export async function getServerSideProps(context) {
-  const cookieHeader = context.req?.headers?.cookie || "";
-  const cookies = cookieHeader ? cookie.parse(cookieHeader) : {};
+  const cookies = cookie.parse(context.req.headers.cookie || "");
   const username = cookies.username || null;
 
-  if (!username) return { redirect: { destination: "/login", permanent: false } };
-
-  const postsRef = collection(db, "posts");
-
-  const firstSnapshot = await getDocs(query(postsRef, where("author", "==", username), orderBy("createdAt", "desc"), limit(10)));
-
-  const initialPosts = firstSnapshot.docs.map(docSnap => {
-    const data = docSnap.data();
+  if (!username) {
     return {
-      id: docSnap.id,
+      redirect: { destination: "/login", permanent: false },
+    };
+  }
+
+  const ref = collection(db, "posts");
+
+  const firstQuery = query(
+    ref,
+    where("author", "==", username),
+    orderBy("createdAt", "desc"),
+    limit(40)
+  );
+
+  const snap = await getDocs(firstQuery);
+
+  const initialPosts = snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
       head: data.head || "",
       story: data.story || "",
       category: data.categories || "",
       image: data.imageUrl || null,
       views: data.views || 0,
-      totalComments: 0,
       comments: [],
+      totalComments: 0,
       commentsLoaded: false,
-      createdAt: data.createdAt,
-      docRef: docSnap,
     };
   });
 
-  const allSnapshot = await getDocs(query(postsRef, where("author", "==", username)));
-  const totalPosts = allSnapshot.size;
   let totalViews = 0;
-  allSnapshot.forEach(docSnap => { totalViews += docSnap.data().views || 0; });
+  const allSnap = await getDocs(query(ref, where("author", "==", username)));
+  allSnap.forEach((d) => (totalViews += d.data().views || 0));
 
-  return { props: { initialPosts, totalPosts, totalViews, username } };
+  return {
+    props: {
+      initialPosts,
+      totalPosts: allSnap.size,
+      totalViews,
+      username,
+    },
+  };
 }
