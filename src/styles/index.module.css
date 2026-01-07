@@ -1,6 +1,6 @@
-/* ---------------------- */
-/* Container Setup        */
-/* ---------------------- */
+/* =========================
+   CONTAINER
+========================= */
 .container {
   max-width: 1100px;
   margin: 40px auto;
@@ -8,12 +8,11 @@
   background: #ffffff;
 }
 
-/* ---------------------- */
-/* Dashboard Cards        */
-/* ---------------------- */
+/* =========================
+   DASHBOARD CARDS
+========================= */
 .cards {
   display: flex;
-  justify-content: space-between;
   gap: 16px;
   margin-bottom: 25px;
   flex-wrap: wrap;
@@ -21,54 +20,55 @@
 
 .card {
   flex: 1;
+  min-width: 220px;
   background: #f9fafb;
   padding: 20px;
   border-radius: 14px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
+  transition: transform 0.25s ease, background 0.25s ease;
 }
 
 .card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
   background: #eef2f7;
 }
 
 .card h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   color: #333;
 }
 
 .card p {
-  margin: 8px 0 0;
-  font-size: 20px;
+  margin-top: 8px;
+  font-size: 22px;
   font-weight: 700;
   color: #007bff;
 }
 
-/* ---------------------- */
-/* Search Bar             */
-/* ---------------------- */
+/* =========================
+   SEARCH BAR
+========================= */
 .search {
   width: 100%;
-  padding: 12px 15px;
-  border: 1px solid #ddd;
+  padding: 12px 16px;
   border-radius: 10px;
+  border: 1px solid #ddd;
   margin-bottom: 25px;
   font-size: 15px;
-  outline: none;
-  transition: all 0.2s ease;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
 }
 
 .search:focus {
+  outline: none;
   border-color: #007bff;
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
 }
 
-/* ---------------------- */
-/* Posts Section          */
-/* ---------------------- */
+/* =========================
+   POSTS LIST
+========================= */
 .postsList {
   display: flex;
   flex-direction: column;
@@ -80,7 +80,7 @@
   border-radius: 14px;
   padding: 20px;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
+  transition: transform 0.25s ease;
 }
 
 .postCard:hover {
@@ -91,65 +91,66 @@
   width: 100%;
   height: 230px;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: 12px;
   margin-bottom: 15px;
 }
 
+/* =========================
+   POST CONTENT
+========================= */
 .postHead {
   font-size: 22px;
-  margin: 5px 0 10px;
-  color: #111111;
   font-weight: 600;
+  margin-bottom: 8px;
+  color: #111;
 }
 
 .postSummary {
-  color: #444444;
-  line-height: 1.6;
   font-size: 15px;
+  color: #444;
+  line-height: 1.6;
   margin-bottom: 10px;
 }
 
-/* Styles ya container y'amakategory */
+/* =========================
+   CATEGORY
+========================= */
 .postCategory {
-  display: inline-flex;        /* kugirango ibe kumurongo umwe n'inyuguti "Category:" */
-  align-items: center;         /* gutuma ihuza neza n'inyuguti */
-  gap: 5px;                    /* intera hagati ya label na tag */
-  margin-top: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
   font-size: 14px;
-  color: #333;                 /* ibara ry'inyuguti */
-}
-
-.postCategory strong {
-  font-weight: bold;
-  margin-right: 5px;
 }
 
 .postCategory span {
-  background-color: #f0f0f0;   /* ibara ry'inyuma rya tag */
-  color: #555555;              /* ibara ry'inyuguti muri tag */
-  padding: 3px 10px;           /* intera imbere muri tag */
-  border-radius: 12px;         /* igororotse mu mpande */
-  font-size: 14px;
-  font-style: normal;          /* shyira kuri normal niba ushaka ntibe italic */
-  display: inline-block;
+  background: #f0f0f0;
+  padding: 4px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  color: #555;
 }
 
-/* ---------------------- */
-/* Post Stats & Actions   */
-/* ---------------------- */
+/* =========================
+   STATS
+========================= */
 .postStats {
-  color: #333333;
-  font-size: 14px;
-  margin-top: 8px;
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 18px;
+  font-size: 14px;
+  color: #333;
+  margin-top: 10px;
 }
 
-.postStats i {
+.postStats svg {
   color: #007bff;
+  margin-right: 5px;
 }
 
+/* =========================
+   ACTION BUTTONS
+========================= */
 .actions {
   display: flex;
   gap: 10px;
@@ -157,16 +158,17 @@
   flex-wrap: wrap;
 }
 
-.editBtn,
-.deleteBtn,
-.toggleBtn,.commentBtn {
+.actions button {
   border: none;
   cursor: pointer;
-  padding: 10px 16px;
+  padding: 10px 18px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.25s ease, transform 0.2s ease;
 }
 
 /* Edit */
@@ -181,47 +183,27 @@
 /* Delete */
 .deleteBtn {
   background: #e63946;
-  color: white;
+  color: #fff;
 }
 .deleteBtn:hover {
   background: #c6282d;
 }
 
-/* Toggle Comments */
-/* styles.module.css cyangwa aho ufite CSS yawe */
-.toggleBtn {
-  background-color: #4CAF50; /* ibara rya button */
-  color: white; /* ibara ry'inyuguti */
-  margin: 10px;
-  padding: 10px 20px; /* intera imbere muri button */
-  border: none; /* kuraho border y'umwimerere */
-  border-radius: 8px; /* gutunganya imipaka ya button ibe igororotse */
-  font-size: 16px; /* ubunini bw'inyuguti */
-  cursor: pointer; /* igaragaza ko ishobora gukandwa */
-  transition: background-color 0.3s ease, transform 0.2s ease; /* animation yoroshye */
+/* Disabled */
+.actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.toggleBtn:hover {
-  background-color: #45a049; /* guhindura ibara igihe uri hejuru ya button */
-  transform: scale(1.05); /* gukomeza gato button igihe uri hejuru */
-}
-
-.toggleBtn:focus {
-  outline: none; /* gukuraho outline igihe button ifite focus */
-  box-shadow: 0 0 0 3px rgba(72, 239, 128, 0.5); /* halo itanga focus effect */
-}
-
-/* ---------------------- */
-/* Comments Section       */
-/* ---------------------- */
+/* =========================
+   COMMENTS
+========================= */
 .commentsList {
   margin-top: 18px;
-  border-top: 1px solid #eee;
-  padding-top: 14px;
   background: #f9fafb;
-  color: black;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 15px;
+  border-top: 1px solid #eee;
 }
 
 .commentCard {
@@ -231,7 +213,7 @@
   border-radius: 8px;
   margin-top: 10px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  transition: background 0.3s ease;
+  transition: background 0.25s ease;
 }
 
 .commentCard:hover {
@@ -245,30 +227,51 @@
 }
 
 .noComments {
+  text-align: center;
   color: #999;
   font-style: italic;
   font-size: 14px;
-  text-align: center;
-  margin-top: 5px;
 }
+
+/* =========================
+   LOAD MORE BUTTON
+========================= */
 .loadMoreBtn {
-  margin: 20px auto;
+  margin: 30px auto 0;
   display: block;
-  background-color: #0070f3;
+  background: #0070f3;
   color: white;
-  padding: 10px 25px;
+  padding: 12px 30px;
+  border-radius: 12px;
   border: none;
-  border-radius: 10px;
-  cursor: pointer;
   font-weight: bold;
-  transition: background 0.2s ease;
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.2s ease;
 }
+
 .loadMoreBtn:hover {
-  background-color: #0059c9;
+  background: #0059c9;
+  transform: translateY(-2px);
 }
-/* ---------------------- */
-/* Responsive             */
-/* ---------------------- */
+
+.loadMoreBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =========================
+   EMPTY STATE
+========================= */
+.empty {
+  text-align: center;
+  padding: 40px;
+  color: #777;
+  font-size: 16px;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
 @media (max-width: 768px) {
   .cards {
     flex-direction: column;
@@ -288,6 +291,20 @@
 
   .actions {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 15px;
+  }
+
+  .postImage {
+    height: 160px;
+  }
+
+  .loadMoreBtn {
+    width: 100%;
   }
 }
