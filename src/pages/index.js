@@ -129,7 +129,7 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
 
       setPosts(prev => [...prev, ...newPosts]);
       setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-      setHasMore(snapshot.docs.length === 10);
+      setHasMore(snapshot.docs.length === 40);
     } catch (err) {
       console.error("Pagination error:", err);
     }
