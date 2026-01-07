@@ -27,7 +27,7 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
   const [posts, setPosts] = useState(initialPosts);
   const [lastDoc, setLastDoc] = useState(initialPosts.length > 0 ? initialPosts[initialPosts.length - 1].docRef : null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(initialPosts.length >= 10);
+  const [hasMore, setHasMore] = useState(initialPosts.length >= 40);
   const [loadingComments, setLoadingComments] = useState({});
   const [totalPosts, setTotalPosts] = useState(initialTotalPosts);
   const [totalViews, setTotalViews] = useState(initialTotalViews);
@@ -100,7 +100,7 @@ export default function Home({ initialPosts, totalPosts: initialTotalPosts, tota
         where("author", "==", username),
         orderBy("createdAt", "desc"),
         startAfter(posts[posts.length - 1].createdAt),
-        limit(10)
+        limit(40)
       );
 
       const snapshot = await getDocs(q);
