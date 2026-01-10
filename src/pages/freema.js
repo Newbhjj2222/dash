@@ -1,9 +1,7 @@
-'use client';
-import React, { useState, useEffect } from "react";
-import Head from "next/head";
-import { useRouter } from "next/navigation";
-import Cookies from "js-cookie";
+import React from "react";
+import cookie from "cookie";
 import {
+  getFirestore,
   collection,
   getDocs,
   query,
@@ -12,149 +10,138 @@ import {
   doc,
   deleteDoc,
 } from "firebase/firestore";
-import { db } from "@/components/firebase";
+import { app } from "@/components/firebase";
 import styles from "@/styles/freema.module.css";
-import { FaTrashAlt, FaComment } from "react-icons/fa";
 
-export default function FreemaPage() {
-  const router = useRouter();
-  const [username, setUsername] = useState(null);
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+const db = getFirestore(app);
 
-  // 🟢 Fata username muri cookies
-  useEffect(() => {
-    const user = Cookies.get("username");
-    if (!user) {
-      router.push("/login");
-    } else {
-      setUsername(user);
-    }
-  }, [router]);
+export async function getServerSideProps(context) {
+  const cookies = cookie.parse(context.req.headers.cookie || "");
+  const username = cookies.username || null;
 
-  // 🟢 Fata posts z'umukoresha
-  useEffect(() => {
-    if (!username) return;
-
-    const fetchPosts = async () => {
-      try {
-        setLoading(true);
-        const postsRef = collection(db, "free");
-        const q = query(
-          postsRef,
-          where("author", "==", username),
-          orderBy("createdAt", "desc")
-        );
-        const snap = await getDocs(q);
-
-        const postsData = await Promise.all(
-          snap.docs.map(async (docSnap) => {
-            const data = docSnap.data();
-            // Fata comments
-            const commentsRef = collection(db, "free", docSnap.id, "comments");
-            const commentsSnap = await getDocs(
-              query(commentsRef, orderBy("createdAt", "desc"))
-            );
-            const comments = commentsSnap.docs.map(c => ({
-              id: c.id,
-              ...c.data(),
-            }));
-
-            return {
-              id: docSnap.id,
-              ...data,
-              comments,
-            };
-          })
-        );
-
-        setPosts(postsData);
-      } catch (err) {
-        console.error("Error fetching posts:", err);
-      } finally {
-        setLoading(false);
-      }
+  if (!username) {
+    return {
+      redirect: {
+        destination: "/login",
+        permanent: false,
+      },
     };
+  }
 
-    fetchPosts();
-  }, [username]);
+  const posts = [];
 
-  // 🟢 Delete post n'ibitekerezo
+  const q = query(
+    collection(db, "free"),
+    where("author", "==", username),
+    orderBy("createdAt", "desc")
+  );
+
+  const snap = await getDocs(q);
+
+  for (const postDoc of snap.docs) {
+    const postData = postDoc.data();
+
+    // 🔹 Fata comments
+    const commentsSnap = await getDocs(
+      collection(db, "free", postDoc.id, "comments")
+    );
+
+    const comments = commentsSnap.docs.map((c) => ({
+      id: c.id,
+      ...c.data(),
+    }));
+
+    posts.push({
+      id: postDoc.id,
+      ...postData,
+      comments,
+    });
+  }
+
+  return {
+    props: {
+      username,
+      posts: JSON.parse(JSON.stringify(posts)),
+    },
+  };
+}
+
+export default function FreemaPage({ username, posts }) {
   const handleDelete = async (postId) => {
-    if (!confirm("Urashaka koko gusiba iyi post n'ibitekerezo byose?")) return;
+    if (!confirm("Uzi neza ko ushaka gusiba iyi post burundu?")) return;
 
     try {
-      setLoading(true);
+      // 🧨 Siba comments zose
+      const commentsSnap = await getDocs(
+        collection(db, "free", postId, "comments")
+      );
 
-      // Delete comments
-      const commentsRef = collection(db, "free", postId, "comments");
-      const commentsSnap = await getDocs(commentsRef);
       for (const c of commentsSnap.docs) {
         await deleteDoc(doc(db, "free", postId, "comments", c.id));
       }
 
-      // Delete post
+      // 🧨 Siba post
       await deleteDoc(doc(db, "free", postId));
 
-      // Update UI
-      setPosts(prev => prev.filter(p => p.id !== postId));
-      alert("Post yasibwe neza!");
+      location.reload();
     } catch (err) {
+      alert("Hari ikibazo mu gusiba post");
       console.error(err);
-      alert("Gusiba byanze!");
-    } finally {
-      setLoading(false);
     }
   };
 
-  if (!username) return <p>Redirecting to login...</p>;
-  if (loading) return <p>Loading posts...</p>;
-
   return (
     <div className={styles.container}>
-      <Head>
-        <title>{username}'s Posts</title>
-        <meta name="description" content={`All posts by ${username}`} />
-      </Head>
+      <h1 className={styles.title}>Freema Posts</h1>
+      <p className={styles.user}>
+        Logged in as <strong>{username}</strong>
+      </p>
 
-      <h1 className={styles.pageTitle}>{username}'s Posts</h1>
-
-      {posts.length === 0 ? (
-        <p>No posts yet.</p>
-      ) : (
-        <div className={styles.postsGrid}>
-          {posts.map(post => (
-            <div key={post.id} className={styles.postCard}>
-              {post.imageUrl && (
-                <img src={post.imageUrl} alt={post.head} className={styles.postImage} />
-              )}
-
-              <h2 className={styles.postTitle}>{post.head}</h2>
-              <div
-                className={styles.storyWrapper}
-                dangerouslySetInnerHTML={{ __html: post.story }}
-              />
-
-              <div className={styles.actions}>
-                <button onClick={() => handleDelete(post.id)} className={styles.deleteBtn}>
-                  <FaTrashAlt /> Delete
-                </button>
-              </div>
-
-              <div className={styles.commentsSection}>
-                <h3><FaComment /> Comments ({post.comments.length})</h3>
-                {post.comments.length === 0 && <p>No comments yet.</p>}
-                {post.comments.map(c => (
-                  <div key={c.id} className={styles.commentItem}>
-                    <small>{c.author}</small>
-                    <p>{c.content}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+      {posts.length === 0 && (
+        <p className={styles.empty}>Nta post urashyiramo</p>
       )}
+
+      {posts.map((post) => (
+        <div key={post.id} className={styles.postCard}>
+          <h2>{post.head}</h2>
+
+          {post.imageUrl && (
+            <img src={post.imageUrl} className={styles.image} />
+          )}
+
+          <div
+            className={styles.story}
+            dangerouslySetInnerHTML={{ __html: post.story }}
+          />
+
+          <p className={styles.meta}>
+            🕒 {new Date(post.createdAt).toLocaleString()}
+          </p>
+
+          <button
+            className={styles.deleteBtn}
+            onClick={() => handleDelete(post.id)}
+          >
+            🗑️ Delete Post
+          </button>
+
+          {/* COMMENTS */}
+          <div className={styles.comments}>
+            <h4>Comments ({post.comments.length})</h4>
+
+            {post.comments.length === 0 && (
+              <p className={styles.noComment}>Nta comments zirabaho</p>
+            )}
+
+            {post.comments.map((c) => (
+              <div key={c.id} className={styles.comment}>
+                <strong>{c.username}</strong>
+                <p>{c.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
