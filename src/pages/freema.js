@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Head from "next/head";
 import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
 import { db } from "../components/firebase";
 import {
   collection,
@@ -12,9 +13,8 @@ import {
   deleteDoc,
   doc
 } from "firebase/firestore";
-import Cookies from "js-cookie";
-import styles from "../styles/freema.module.css";
 import { FaTrashAlt, FaComment } from "react-icons/fa";
+import styles from "../styles/freema.module.css";
 
 export default function FreemaPage() {
   const router = useRouter();
@@ -31,7 +31,6 @@ export default function FreemaPage() {
     }
     setUsername(user);
 
-    // Fetch posts authored by this user
     const fetchPosts = async () => {
       try {
         const postsRef = collection(db, "free");
@@ -67,7 +66,7 @@ export default function FreemaPage() {
     fetchPosts();
   }, [router]);
 
-  // 🟢 Delete post
+  // 🟢 Delete post n'izo comments zayo
   const handleDelete = async (postId) => {
     if (!confirm("Are you sure you want to delete this post permanently?")) return;
 
@@ -94,18 +93,13 @@ export default function FreemaPage() {
     }
   };
 
-  if (!username) {
-    return <p>Redirecting to login...</p>;
-  }
+  if (!username) return <p>Redirecting to login...</p>;
 
   return (
     <div className={styles.container}>
       <Head>
         <title>{username}'s Posts</title>
-        <meta
-          name="description"
-          content={`All posts written by ${username}`}
-        />
+        <meta name="description" content={`All posts written by ${username}`} />
       </Head>
 
       <h1 className={styles.pageTitle}>{username}'s Posts</h1>
