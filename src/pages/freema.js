@@ -8,72 +8,106 @@ import {
   collection,
   query,
   where,
-  getDocs,
   orderBy,
+  getDocs,
+  onSnapshot,
   deleteDoc,
   doc
 } from "firebase/firestore";
-import { FaTrashAlt, FaComment } from "react-icons/fa";
 import styles from "../styles/freema.module.css";
+import { FaTrashAlt, FaComment } from "react-icons/fa";
 
-export default function FreemaPage() {
+// 🟢 SSR: Fata posts z'umukoresha uri muri cookies
+export async function getServerSideProps(context) {
+  try {
+    const cookies = context.req.headers.cookie || "";
+    const userCookie = cookies
+      .split("; ")
+      .find((row) => row.startsWith("username="));
+
+    if (!userCookie) {
+      return {
+        redirect: {
+          destination: "/login",
+          permanent: false,
+        },
+      };
+    }
+
+    const username = decodeURIComponent(userCookie.split("=")[1]);
+
+    const postsRef = collection(db, "free");
+    const q = query(
+      postsRef,
+      where("author", "==", username),
+      orderBy("createdAt", "desc")
+    );
+
+    const snapshot = await getDocs(q);
+
+    const posts = await Promise.all(
+      snapshot.docs.map(async (docSnap) => {
+        const data = docSnap.data();
+        const commentsRef = collection(db, "free", docSnap.id, "comments");
+        const commentsSnap = await getDocs(
+          query(commentsRef, orderBy("createdAt", "desc"))
+        );
+        const comments = commentsSnap.docs.map((c) => ({
+          id: c.id,
+          ...c.data(),
+        }));
+        return { id: docSnap.id, ...data, comments };
+      })
+    );
+
+    return { props: { username, initialPosts: posts } };
+  } catch (err) {
+    console.error(err);
+    return { props: { username: null, initialPosts: [] } };
+  }
+}
+
+export default function FreemaPage({ username, initialPosts }) {
   const router = useRouter();
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState(initialPosts || []);
   const [loading, setLoading] = useState(false);
-  const [username, setUsername] = useState("");
 
-  // 🟢 Fata username client-side
   useEffect(() => {
+    // 🟢 Re-fetch username from client-side cookies in case
     const user = Cookies.get("username");
     if (!user) {
       router.push("/login");
       return;
     }
-    setUsername(user);
 
-    const fetchPosts = async () => {
-      try {
-        const postsRef = collection(db, "free");
-        const q = query(
-          postsRef,
-          where("author", "==", user),
-          orderBy("createdAt", "desc")
+    // 🟢 Real-time comments updates
+    posts.forEach((post) => {
+      const commentsRef = collection(db, "free", post.id, "comments");
+      const q = query(commentsRef, orderBy("createdAt", "desc"));
+      onSnapshot(q, (snapshot) => {
+        const updatedComments = snapshot.docs.map((c) => ({
+          id: c.id,
+          ...c.data(),
+        }));
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === post.id ? { ...p, comments: updatedComments } : p
+          )
         );
-        const snapshot = await getDocs(q);
+      });
+    });
+  }, []);
 
-        const postsData = await Promise.all(
-          snapshot.docs.map(async (docSnap) => {
-            const data = docSnap.data();
-            const commentsRef = collection(db, "free", docSnap.id, "comments");
-            const commentsSnap = await getDocs(
-              query(commentsRef, orderBy("createdAt", "desc"))
-            );
-            const comments = commentsSnap.docs.map((c) => ({
-              id: c.id,
-              ...c.data(),
-            }));
+  if (!username) return <p>Redirecting to login...</p>;
 
-            return { id: docSnap.id, ...data, comments };
-          })
-        );
-
-        setPosts(postsData);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    fetchPosts();
-  }, [router]);
-
-  // 🟢 Delete post n'izo comments zayo
+  // 🟢 Delete post
   const handleDelete = async (postId) => {
     if (!confirm("Are you sure you want to delete this post permanently?")) return;
 
     try {
       setLoading(true);
 
-      // Delete comments
+      // Delete comments first
       const commentsRef = collection(db, "free", postId, "comments");
       const commentsSnap = await getDocs(commentsRef);
       for (const c of commentsSnap.docs) {
@@ -83,6 +117,7 @@ export default function FreemaPage() {
       // Delete post
       await deleteDoc(doc(db, "free", postId));
 
+      // Update UI
       setPosts((prev) => prev.filter((p) => p.id !== postId));
       setLoading(false);
       alert("Post deleted successfully!");
@@ -93,13 +128,14 @@ export default function FreemaPage() {
     }
   };
 
-  if (!username) return <p>Redirecting to login...</p>;
-
   return (
     <div className={styles.container}>
       <Head>
         <title>{username}'s Posts</title>
-        <meta name="description" content={`All posts written by ${username}`} />
+        <meta
+          name="description"
+          content={`All posts written by ${username}`}
+        />
       </Head>
 
       <h1 className={styles.pageTitle}>{username}'s Posts</h1>
