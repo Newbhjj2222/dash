@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import * as cookie from "cookie";
 import styles from "@/styles/freema.module.css";
 
 import {
-  getFirestore,
   collection,
   getDocs,
   query,
@@ -13,80 +13,117 @@ import {
   doc,
 } from "firebase/firestore";
 
-import { app } from "@/components/firebase";
+import { db } from "@/components/firebase";
 
-export async function getServerSideProps() {
-  // SSR ikora rendering gusa
-  return {
-    props: {},
-  };
-}
+/* ======================
+   SSR
+====================== */
+export async function getServerSideProps(context) {
+  const cookies = cookie.parse(context.req.headers.cookie || "");
+  const username = cookies.username || null;
 
-export default function Freema() {
-  const router = useRouter();
-  const db = getFirestore(app);
+  if (!username) {
+    return {
+      redirect: { destination: "/login", permanent: false },
+    };
+  }
 
-  const [username, setUsername] = useState("");
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // ✅ CLIENT: Fata username muri cookies (uko wasabye)
-  useEffect(() => {
-    const cookies = document.cookie.split("; ");
-    const userCookie = cookies.find((row) =>
-      row.startsWith("username=")
+  try {
+    const q = query(
+      collection(db, "free"),
+      where("author", "==", username),
+      orderBy("createdAt", "desc")
     );
 
-    if (userCookie) {
-      const value = userCookie.split("=")[1];
-      setUsername(decodeURIComponent(value));
-    } else {
-      router.push("/login");
-    }
-  }, [router]);
+    const snap = await getDocs(q);
 
-  // ✅ CLIENT: Fata posts + comments
+    const initialPosts = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        head: data.head || "",
+        story: data.story || "",
+        imageUrl: data.imageUrl || null,
+        createdAt: data.createdAt || null,
+        comments: [],
+        commentsLoaded: false,
+      };
+    });
+
+    return {
+      props: {
+        username,
+        initialPosts,
+      },
+    };
+  } catch (err) {
+    console.error("SSR fetch error:", err);
+
+    // 🛡️ fallback safe
+    return {
+      props: {
+        username,
+        initialPosts: [],
+      },
+    };
+  }
+}
+
+/* ======================
+   CLIENT
+====================== */
+export default function Freema({ username, initialPosts }) {
+  const router = useRouter();
+
+  const [posts, setPosts] = useState(initialPosts);
+  const [loadingComments, setLoadingComments] = useState({});
+
+  /* ======================
+     LOAD COMMENTS (CLIENT)
+  ====================== */
   useEffect(() => {
-    if (!username) return;
+    const loadComments = async () => {
+      for (const post of posts) {
+        if (post.commentsLoaded) continue;
 
-    const fetchPosts = async () => {
-      try {
-        const q = query(
-          collection(db, "free"),
-          where("author", "==", username),
-          orderBy("createdAt", "desc")
-        );
+        setLoadingComments((p) => ({ ...p, [post.id]: true }));
 
-        const snap = await getDocs(q);
-        const data = [];
-
-        for (const postDoc of snap.docs) {
-          const commentsSnap = await getDocs(
-            collection(db, "free", postDoc.id, "comments")
+        try {
+          const snap = await getDocs(
+            collection(db, "free", post.id, "comments")
           );
 
-          data.push({
-            id: postDoc.id,
-            ...postDoc.data(),
-            comments: commentsSnap.docs.map((c) => ({
-              id: c.id,
-              ...c.data(),
-            })),
-          });
-        }
+          const comments = snap.docs.map((c) => ({
+            id: c.id,
+            ...c.data(),
+          }));
 
-        setPosts(data);
-      } catch (err) {
-        console.error("Fetch error:", err);
-      } finally {
-        setLoading(false);
+          setPosts((prev) =>
+            prev.map((p) =>
+              p.id === post.id
+                ? {
+                    ...p,
+                    comments,
+                    commentsLoaded: true,
+                  }
+                : p
+            )
+          );
+        } catch (err) {
+          console.error("Comments error:", err);
+        } finally {
+          setLoadingComments((p) => ({ ...p, [post.id]: false }));
+        }
       }
     };
 
-    fetchPosts();
-  }, [username, db]);
+    loadComments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // 🗑️ Delete post + comments
+  /* ======================
+     DELETE
+  ====================== */
   const deletePost = async (postId) => {
     if (!confirm("Uremeza gusiba iyi post burundu?")) return;
 
@@ -108,13 +145,13 @@ export default function Freema() {
     }
   };
 
-  if (loading) {
-    return <p className={styles.loading}>Loading...</p>;
-  }
-
+  /* ======================
+     RENDER
+  ====================== */
   return (
     <div className={styles.container}>
       <h1>Freema Posts</h1>
+
       <p>
         Logged in as <strong>{username}</strong>
       </p>
@@ -130,8 +167,8 @@ export default function Freema() {
           )}
 
           <div
-            dangerouslySetInnerHTML={{ __html: post.story }}
             className={styles.story}
+            dangerouslySetInnerHTML={{ __html: post.story }}
           />
 
           <button
@@ -142,8 +179,12 @@ export default function Freema() {
           </button>
 
           <div className={styles.comments}>
-            <h4>Comments ({post.comments.length})</h4>
-            {post.comments.map((c) => (
+            <h4>
+              Comments{" "}
+              {loadingComments[post.id] ? "(Loading...)" : ""}
+            </h4>
+
+            {post.comments?.map((c) => (
               <div key={c.id} className={styles.comment}>
                 <strong>{c.username}</strong>
                 <p>{c.text}</p>
