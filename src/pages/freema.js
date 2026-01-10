@@ -1,5 +1,7 @@
-import React from "react";
-import cookie from "cookie";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import styles from "@/styles/freema.module.css";
+
 import {
   getFirestore,
   collection,
@@ -7,71 +9,88 @@ import {
   query,
   where,
   orderBy,
-  doc,
   deleteDoc,
+  doc,
 } from "firebase/firestore";
+
 import { app } from "@/components/firebase";
-import styles from "@/styles/freema.module.css";
 
-const db = getFirestore(app);
-
-export async function getServerSideProps(context) {
-  const cookies = cookie.parse(context.req.headers.cookie || "");
-  const username = cookies.username || null;
-
-  if (!username) {
-    return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
-    };
-  }
-
-  const posts = [];
-
-  const q = query(
-    collection(db, "free"),
-    where("author", "==", username),
-    orderBy("createdAt", "desc")
-  );
-
-  const snap = await getDocs(q);
-
-  for (const postDoc of snap.docs) {
-    const postData = postDoc.data();
-
-    // 🔹 Fata comments
-    const commentsSnap = await getDocs(
-      collection(db, "free", postDoc.id, "comments")
-    );
-
-    const comments = commentsSnap.docs.map((c) => ({
-      id: c.id,
-      ...c.data(),
-    }));
-
-    posts.push({
-      id: postDoc.id,
-      ...postData,
-      comments,
-    });
-  }
-
+export async function getServerSideProps() {
+  // SSR ikora rendering gusa
   return {
-    props: {
-      username,
-      posts: JSON.parse(JSON.stringify(posts)),
-    },
+    props: {},
   };
 }
 
-export default function FreemaPage({ username, posts }) {
-  const handleDelete = async (postId) => {
-    if (!confirm("Uzi neza ko ushaka gusiba iyi post burundu?")) return;
+export default function Freema() {
+  const router = useRouter();
+  const db = getFirestore(app);
+
+  const [username, setUsername] = useState("");
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // ✅ CLIENT: Fata username muri cookies (uko wasabye)
+  useEffect(() => {
+    const cookies = document.cookie.split("; ");
+    const userCookie = cookies.find((row) =>
+      row.startsWith("username=")
+    );
+
+    if (userCookie) {
+      const value = userCookie.split("=")[1];
+      setUsername(decodeURIComponent(value));
+    } else {
+      router.push("/login");
+    }
+  }, [router]);
+
+  // ✅ CLIENT: Fata posts + comments
+  useEffect(() => {
+    if (!username) return;
+
+    const fetchPosts = async () => {
+      try {
+        const q = query(
+          collection(db, "free"),
+          where("author", "==", username),
+          orderBy("createdAt", "desc")
+        );
+
+        const snap = await getDocs(q);
+        const data = [];
+
+        for (const postDoc of snap.docs) {
+          const commentsSnap = await getDocs(
+            collection(db, "free", postDoc.id, "comments")
+          );
+
+          data.push({
+            id: postDoc.id,
+            ...postDoc.data(),
+            comments: commentsSnap.docs.map((c) => ({
+              id: c.id,
+              ...c.data(),
+            })),
+          });
+        }
+
+        setPosts(data);
+      } catch (err) {
+        console.error("Fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, [username, db]);
+
+  // 🗑️ Delete post + comments
+  const deletePost = async (postId) => {
+    if (!confirm("Uremeza gusiba iyi post burundu?")) return;
 
     try {
-      // 🧨 Siba comments zose
       const commentsSnap = await getDocs(
         collection(db, "free", postId, "comments")
       );
@@ -80,29 +99,30 @@ export default function FreemaPage({ username, posts }) {
         await deleteDoc(doc(db, "free", postId, "comments", c.id));
       }
 
-      // 🧨 Siba post
       await deleteDoc(doc(db, "free", postId));
 
-      location.reload();
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
     } catch (err) {
-      alert("Hari ikibazo mu gusiba post");
-      console.error(err);
+      console.error("Delete error:", err);
+      alert("Gusiba byanze");
     }
   };
 
+  if (loading) {
+    return <p className={styles.loading}>Loading...</p>;
+  }
+
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>Freema Posts</h1>
-      <p className={styles.user}>
+      <h1>Freema Posts</h1>
+      <p>
         Logged in as <strong>{username}</strong>
       </p>
 
-      {posts.length === 0 && (
-        <p className={styles.empty}>Nta post urashyiramo</p>
-      )}
+      {posts.length === 0 && <p>Nta post urashyiramo</p>}
 
       {posts.map((post) => (
-        <div key={post.id} className={styles.postCard}>
+        <div key={post.id} className={styles.post}>
           <h2>{post.head}</h2>
 
           {post.imageUrl && (
@@ -110,29 +130,19 @@ export default function FreemaPage({ username, posts }) {
           )}
 
           <div
-            className={styles.story}
             dangerouslySetInnerHTML={{ __html: post.story }}
+            className={styles.story}
           />
 
-          <p className={styles.meta}>
-            🕒 {new Date(post.createdAt).toLocaleString()}
-          </p>
-
           <button
-            className={styles.deleteBtn}
-            onClick={() => handleDelete(post.id)}
+            onClick={() => deletePost(post.id)}
+            className={styles.delete}
           >
-            🗑️ Delete Post
+            🗑️ Delete
           </button>
 
-          {/* COMMENTS */}
           <div className={styles.comments}>
             <h4>Comments ({post.comments.length})</h4>
-
-            {post.comments.length === 0 && (
-              <p className={styles.noComment}>Nta comments zirabaho</p>
-            )}
-
             {post.comments.map((c) => (
               <div key={c.id} className={styles.comment}>
                 <strong>{c.username}</strong>
