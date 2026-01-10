@@ -1,47 +1,54 @@
-import React, { useState, useEffect } from "react";
+// pages/freema.js
+import React, { useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import cookie from "cookie";
+import { db } from "../components/firebase";
 import {
   collection,
   query,
   where,
   getDocs,
   orderBy,
-  doc,
   deleteDoc,
-  limit,
+  doc,
 } from "firebase/firestore";
-import { db } from "@/components/firebase";
-import styles from "@/styles/freema.module.css";
+import cookie from "cookie";
+import styles from "../styles/freema.module.css";
 import { FaTrashAlt, FaComment } from "react-icons/fa";
 
 export default function FreemaPage({ username, initialPosts }) {
   const router = useRouter();
   const [posts, setPosts] = useState(initialPosts || []);
-  const [loadingDelete, setLoadingDelete] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Redirect to login if no username
-  useEffect(() => {
-    if (!username) {
-      router.push("/login");
-    }
-  }, [username, router]);
+  if (!username) {
+    return <p>Redirecting to login...</p>;
+  }
 
-  // Delete post
   const handleDelete = async (postId) => {
-    if (!confirm("Are you sure you want to delete this post?")) return;
+    if (!confirm("Are you sure you want to delete this post permanently?")) return;
 
     try {
-      setLoadingDelete(true);
+      setLoading(true);
+
+      // Delete comments
+      const commentsRef = collection(db, "free", postId, "comments");
+      const commentsSnap = await getDocs(commentsRef);
+      for (const c of commentsSnap.docs) {
+        await deleteDoc(doc(db, "free", postId, "comments", c.id));
+      }
+
+      // Delete post
       await deleteDoc(doc(db, "free", postId));
+
+      // Update UI
       setPosts((prev) => prev.filter((p) => p.id !== postId));
-      setLoadingDelete(false);
+      setLoading(false);
       alert("Post deleted successfully!");
     } catch (err) {
       console.error(err);
-      setLoadingDelete(false);
       alert("Failed to delete post.");
+      setLoading(false);
     }
   };
 
@@ -49,11 +56,12 @@ export default function FreemaPage({ username, initialPosts }) {
     <div className={styles.container}>
       <Head>
         <title>{username}'s Posts</title>
-        <meta name="description" content={`All posts by ${username}`} />
+        <meta name="description" content={`All posts written by ${username}`} />
       </Head>
 
       <h1 className={styles.pageTitle}>{username}'s Posts</h1>
 
+      {loading && <p>Processing...</p>}
       {posts.length === 0 && <p>No posts yet.</p>}
 
       <div className={styles.postsGrid}>
@@ -65,6 +73,9 @@ export default function FreemaPage({ username, initialPosts }) {
 
             <div className={styles.postContent}>
               <h2 className={styles.postTitle}>{post.head}</h2>
+              <small>
+                Season: {post.season || "nono"} | Episode: {post.episodeNumber || "nono"}
+              </small>
 
               <div
                 className={styles.storyWrapper}
@@ -75,7 +86,6 @@ export default function FreemaPage({ username, initialPosts }) {
                 <button
                   className={styles.deleteBtn}
                   onClick={() => handleDelete(post.id)}
-                  disabled={loadingDelete}
                 >
                   <FaTrashAlt /> Delete
                 </button>
@@ -83,18 +93,15 @@ export default function FreemaPage({ username, initialPosts }) {
 
               <div className={styles.commentsSection}>
                 <h3>
-                  <FaComment /> Comments ({post.comments?.length || 0})
+                  <FaComment /> Comments ({post.comments.length})
                 </h3>
-                {post.comments && post.comments.length > 0 ? (
-                  post.comments.map((c) => (
-                    <div key={c.id} className={styles.commentItem}>
-                      <small>{c.author}</small>
-                      <p>{c.content}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p>No comments yet.</p>
-                )}
+                {post.comments.length === 0 && <p>No comments yet.</p>}
+                {post.comments.map((c) => (
+                  <div key={c.id} className={styles.commentItem}>
+                    <small>{c.author}</small>
+                    <p>{c.content}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -105,7 +112,7 @@ export default function FreemaPage({ username, initialPosts }) {
 }
 
 // ==========================
-// SERVER SIDE
+// SSR: Fetch posts of logged-in user
 // ==========================
 export async function getServerSideProps(context) {
   try {
@@ -118,26 +125,45 @@ export async function getServerSideProps(context) {
       };
     }
 
-    // Fata first 10 posts z'umukoresha
+    // Fata posts z'umukoresha muri collection "free"
     const postsRef = collection(db, "free");
     const q = query(
       postsRef,
       where("author", "==", username),
-      orderBy("createdAt", "desc"),
-      limit(10)
+      orderBy("createdAt", "desc")
     );
 
     const snap = await getDocs(q);
 
-    const initialPosts = snap.docs.map((docSnap) => ({
-      id: docSnap.id,
-      head: docSnap.data().head || "",
-      story: docSnap.data().story || "",
-      imageUrl: docSnap.data().imageUrl || null,
-      comments: docSnap.data().comments || [],
-    }));
+    const posts = await Promise.all(
+      snap.docs.map(async (docSnap) => {
+        const data = docSnap.data();
 
-    return { props: { username, initialPosts } };
+        // Fata comments
+        const commentsRef = collection(db, "free", docSnap.id, "comments");
+        const commentsSnap = await getDocs(
+          query(commentsRef, orderBy("createdAt", "desc"))
+        );
+        const comments = commentsSnap.docs.map((c) => ({
+          id: c.id,
+          ...c.data(),
+        }));
+
+        return {
+          id: docSnap.id,
+          head: data.head || "",
+          story: data.story || "",
+          imageUrl: data.imageUrl || null,
+          season: data.season || "nono",
+          episodeNumber: data.episodeNumber || "nono",
+          comments,
+        };
+      })
+    );
+
+    return {
+      props: { username, initialPosts: posts },
+    };
   } catch (err) {
     console.error("SSR error:", err);
     return { props: { username: null, initialPosts: [] } };
