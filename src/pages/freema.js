@@ -9,168 +9,111 @@ import {
   where,
   getDocs,
   orderBy,
-  startAfter,
   limit,
+  startAfter,
   doc,
   deleteDoc,
 } from "firebase/firestore";
-import { db } from "../components/firebase";
-import styles from "../styles/freema.module.css";
+import { db } from "@/components/firebase";
+import styles from "@/styles/freema.module.css";
 import { FaTrashAlt, FaComment } from "react-icons/fa";
 
-const POSTS_LIMIT = 40;
+/* ======================
+   HELPERS
+====================== */
+const stripHTML = (html = "") => html.replace(/<[^>]*>/g, "");
 
-export async function getServerSideProps(context) {
-  // 🟢 Fata username muri cookies server-side
-  const cookieHeader = context.req.headers.cookie || "";
-  const match = cookieHeader
-    .split("; ")
-    .find((c) => c.startsWith("username="));
-
-  if (!match) {
-    return {
-      redirect: { destination: "/login", permanent: false },
-    };
-  }
-
-  const username = decodeURIComponent(match.split("=")[1]);
-
-  // 🟢 Fata first 40 posts
-  const postsRef = collection(db, "free");
-  const q = query(
-    postsRef,
-    where("author", "==", username),
-    orderBy("createdAt", "desc"),
-    limit(POSTS_LIMIT)
-  );
-
-  const snap = await getDocs(q);
-
-  const posts = await Promise.all(
-    snap.docs.map(async (docSnap) => {
-      const data = docSnap.data();
-
-      // Fata comments buri post
-      const commentsRef = collection(db, "free", docSnap.id, "comments");
-      const commentsSnap = await getDocs(
-        query(commentsRef, orderBy("createdAt", "desc"))
-      );
-      const comments = commentsSnap.docs.map((c) => ({
-        id: c.id,
-        ...c.data(),
-      }));
-
-      return {
-        id: docSnap.id,
-        ...data,
-        comments,
-      };
-    })
-  );
-
-  const lastDoc = snap.docs[snap.docs.length - 1] || null;
-
-  return {
-    props: {
-      username,
-      initialPosts: posts,
-      lastDocId: lastDoc ? lastDoc.id : null,
-    },
-  };
-}
-
-export default function FreemaPage({ username, initialPosts, lastDocId }) {
+/* ======================
+   PAGE
+====================== */
+export default function FreemaPage({ initialPosts, username }) {
   const router = useRouter();
+
   const [posts, setPosts] = useState(initialPosts || []);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(initialPosts.length === POSTS_LIMIT);
-  const [lastDoc, setLastDoc] = useState(lastDocId);
+  const [lastDoc, setLastDoc] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(initialPosts.length >= 10);
+  const [loadingDelete, setLoadingDelete] = useState(false);
 
-  // 🟢 Client-side username (js-cookie)
+  // 📌 Client-side: lastDoc snapshot for pagination
   useEffect(() => {
-    const cookieUser = Cookies.get("username");
-    if (!cookieUser) router.push("/login");
-  }, [router]);
+    if (posts.length > 0) {
+      setLastDoc(posts[posts.length - 1].createdAt || null);
+    }
+  }, [posts]);
 
-  // 🟢 Delete post + comments
+  // Redirect to login if username is missing
+  useEffect(() => {
+    if (!username) {
+      router.push("/login");
+    }
+  }, [username, router]);
+
+  // 🟢 Delete post
   const handleDelete = async (postId) => {
     if (!confirm("Are you sure you want to delete this post permanently?")) return;
 
     try {
-      setLoading(true);
-
-      // Delete comments
-      const commentsRef = collection(db, "free", postId, "comments");
-      const commentsSnap = await getDocs(commentsRef);
-      for (const c of commentsSnap.docs) {
-        await deleteDoc(doc(db, "free", postId, "comments", c.id));
-      }
+      setLoadingDelete(true);
 
       // Delete post
       await deleteDoc(doc(db, "free", postId));
 
+      // Update UI
       setPosts((prev) => prev.filter((p) => p.id !== postId));
-      setLoading(false);
+      setLoadingDelete(false);
       alert("Post deleted successfully!");
     } catch (err) {
       console.error(err);
       alert("Failed to delete post.");
-      setLoading(false);
+      setLoadingDelete(false);
     }
   };
 
-  // 🟢 Load more posts
+  // 🟢 Load more posts (client-side only)
   const loadMorePosts = async () => {
-    if (!hasMore || loading) return;
-    setLoading(true);
+    if (!hasMore || loadingMore) return;
+
+    setLoadingMore(true);
 
     try {
-      // Fata username client-side
-      const username = Cookies.get("username");
-      if (!username) {
-        router.push("/login");
-        return;
-      }
-
-      const postsRef = collection(db, "free");
-      let startAfterDoc = null;
-      if (lastDoc) startAfterDoc = doc(db, "free", lastDoc);
-
+      const ref = collection(db, "free");
       let q = query(
-        postsRef,
+        ref,
         where("author", "==", username),
         orderBy("createdAt", "desc"),
-        startAfterDoc || null,
-        limit(POSTS_LIMIT)
+        limit(10)
       );
 
-      const snap = await getDocs(q);
-      if (snap.empty) {
-        setHasMore(false);
-        setLoading(false);
-        return;
+      if (lastDoc) {
+        q = query(
+          ref,
+          where("author", "==", username),
+          orderBy("createdAt", "desc"),
+          startAfter(lastDoc),
+          limit(10)
+        );
       }
 
-      const newPosts = await Promise.all(
-        snap.docs.map(async (docSnap) => {
-          const data = docSnap.data();
-          const commentsRef = collection(db, "free", docSnap.id, "comments");
-          const commentsSnap = await getDocs(
-            query(commentsRef, orderBy("createdAt", "desc"))
-          );
-          const comments = commentsSnap.docs.map((c) => ({ id: c.id, ...c.data() }));
-          return { id: docSnap.id, ...data, comments };
-        })
-      );
+      const snap = await getDocs(q);
+
+      const newPosts = snap.docs.map((d) => ({
+        id: d.id,
+        head: d.data().head || "",
+        story: d.data().story || "",
+        imageUrl: d.data().imageUrl || null,
+        categories: d.data().categories || [],
+        createdAt: d.data().createdAt || null,
+        comments: d.data().comments || [],
+      }));
 
       setPosts((prev) => [...prev, ...newPosts]);
-      const last = snap.docs[snap.docs.length - 1];
-      setLastDoc(last ? last.id : null);
-      setHasMore(snap.docs.length === POSTS_LIMIT);
-      setLoading(false);
+      setLastDoc(snap.docs[snap.docs.length - 1]?.data().createdAt || null);
+      setHasMore(snap.docs.length === 10);
     } catch (err) {
-      console.error(err);
-      setLoading(false);
+      console.error("Pagination error:", err);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -178,11 +121,11 @@ export default function FreemaPage({ username, initialPosts, lastDocId }) {
     <div className={styles.container}>
       <Head>
         <title>{username}'s Posts</title>
+        <meta name="description" content={`All posts by ${username}`} />
       </Head>
 
       <h1 className={styles.pageTitle}>{username}'s Posts</h1>
 
-      {loading && <p>Processing...</p>}
       {posts.length === 0 && <p>No posts yet.</p>}
 
       <div className={styles.postsGrid}>
@@ -204,6 +147,7 @@ export default function FreemaPage({ username, initialPosts, lastDocId }) {
                 <button
                   className={styles.deleteBtn}
                   onClick={() => handleDelete(post.id)}
+                  disabled={loadingDelete}
                 >
                   <FaTrashAlt /> Delete
                 </button>
@@ -227,10 +171,64 @@ export default function FreemaPage({ username, initialPosts, lastDocId }) {
       </div>
 
       {hasMore && (
-        <button className={styles.loadMoreBtn} onClick={loadMorePosts} disabled={loading}>
-          {loading ? "Loading..." : "Load More"}
+        <button
+          className={styles.loadMoreBtn}
+          onClick={loadMorePosts}
+          disabled={loadingMore}
+        >
+          {loadingMore ? "Loading..." : "Load More"}
         </button>
       )}
     </div>
   );
+}
+
+/* ======================
+   SERVER SIDE
+====================== */
+import cookie from "cookie";
+
+export async function getServerSideProps(context) {
+  const cookies = cookie.parse(context.req.headers.cookie || "");
+  const username = cookies.username || null;
+
+  if (!username) {
+    return {
+      redirect: { destination: "/login", permanent: false },
+    };
+  }
+
+  try {
+    const ref = collection(db, "free");
+    const q = query(
+      ref,
+      where("author", "==", username),
+      orderBy("createdAt", "desc"),
+      limit(10)
+    );
+
+    const snap = await getDocs(q);
+
+    const initialPosts = snap.docs.map((d) => ({
+      id: d.id,
+      head: d.data().head || "",
+      story: d.data().story || "",
+      imageUrl: d.data().imageUrl || null,
+      categories: d.data().categories || [],
+      createdAt: d.data().createdAt || null,
+      comments: d.data().comments || [],
+    }));
+
+    return {
+      props: {
+        username,
+        initialPosts,
+      },
+    };
+  } catch (err) {
+    console.error(err);
+    return {
+      props: { username, initialPosts: [] },
+    };
+  }
 }
