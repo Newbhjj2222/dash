@@ -1,324 +1,236 @@
-// pages/index.js
+'use client';
 import React, { useState, useEffect } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import * as cookie from "cookie";
+import Cookies from "js-cookie";
 import {
   collection,
-  getDocs,
   query,
   where,
+  getDocs,
   orderBy,
-  limit,
   startAfter,
+  limit,
   doc,
   deleteDoc,
 } from "firebase/firestore";
-import { db } from "@/components/firebase";
-import styles from "@/styles/index.module.css";
-import Net from "../components/Net";
-import Card from "@/components/Card";
-import { FaEye, FaComments, FaEdit, FaTrash } from "react-icons/fa";
+import { db } from "../components/firebase";
+import styles from "../styles/freema.module.css";
+import { FaTrashAlt, FaComment } from "react-icons/fa";
 
-/* ======================
-   HELPERS
-====================== */
-const stripHTML = (html = "") => html.replace(/<[^>]*>/g, "");
+const POSTS_LIMIT = 40;
 
-/* ======================
-   PAGE
-====================== */
-export default function Home({
-  initialPosts,
-  totalPosts: initialTotalPosts,
-  totalViews: initialTotalViews,
-  username,
-}) {
-  const router = useRouter();
-
-  const [posts, setPosts] = useState(initialPosts);
-  const [lastDoc, setLastDoc] = useState(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(initialPosts.length === 40);
-  const [search, setSearch] = useState("");
-  const [loadingComments, setLoadingComments] = useState({});
-  const [totalPosts, setTotalPosts] = useState(initialTotalPosts);
-  const [totalViews, setTotalViews] = useState(initialTotalViews);
-
-  /* ======================
-     LOAD COMMENTS (ONCE)
-  ====================== */
-  useEffect(() => {
-    const loadComments = async () => {
-      for (const post of posts) {
-        if (post.commentsLoaded) continue;
-
-        setLoadingComments((p) => ({ ...p, [post.id]: true }));
-
-        try {
-          const ref = collection(db, "free", post.id, "comments");
-          const snap = await getDocs(ref);
-
-          const comments = snap.docs.map((d) => ({
-            id: d.id,
-            author: d.data().author || "Unknown",
-            text: d.data().text || "",
-          }));
-
-          setPosts((prev) =>
-            prev.map((p) =>
-              p.id === post.id
-                ? {
-                    ...p,
-                    comments,
-                    totalComments: comments.length,
-                    commentsLoaded: true,
-                  }
-                : p
-            )
-          );
-        } catch (err) {
-          console.error("Comments error:", err);
-        } finally {
-          setLoadingComments((p) => ({ ...p, [post.id]: false }));
-        }
-      }
-    };
-
-    loadComments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /* ======================
-     FILTER
-  ====================== */
-  const filteredPosts = posts.filter((p) =>
-    (p.head || "").toLowerCase().includes(search.toLowerCase())
-  );
-
-  /* ======================
-     ACTIONS
-  ====================== */
-  const handleEdit = (id) => router.push(`/Editor?id=${id}`);
-
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this post?")) return;
-
-    try {
-      const commentsRef = collection(db, "free", id, "comments");
-      const commentsSnap = await getDocs(commentsRef);
-
-      for (const c of commentsSnap.docs) {
-        await deleteDoc(doc(db, "free", id, "comments", c.id));
-      }
-
-      await deleteDoc(doc(db, "free", id));
-
-      const deleted = posts.find((p) => p.id === id);
-
-      setPosts((prev) => prev.filter((p) => p.id !== id));
-      setTotalPosts((p) => p - 1);
-      setTotalViews((v) => v - (deleted?.views || 0));
-
-      alert("Post deleted");
-    } catch (err) {
-      console.error(err);
-      alert("Error deleting post");
-    }
-  };
-
-  /* ======================
-     LOAD MORE
-  ====================== */
-  const loadMorePosts = async () => {
-    if (!hasMore || loadingMore) return;
-
-    setLoadingMore(true);
-
-    try {
-      const ref = collection(db, "free");
-
-      const q = query(
-        ref,
-        where("author", "==", username),
-        orderBy("createdAt", "desc"),
-        startAfter(lastDoc),
-        limit(40)
-      );
-
-      const snap = await getDocs(q);
-
-      const newPosts = snap.docs.map((d) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          head: data.head || "",
-          story: data.story || "",
-          category: data.categories || "",
-          image: data.imageUrl || null,
-          views: data.views || 0,
-          comments: [],
-          totalComments: 0,
-          commentsLoaded: false,
-        };
-      });
-
-      setPosts((prev) => [...prev, ...newPosts]);
-      setLastDoc(snap.docs[snap.docs.length - 1]);
-      setHasMore(snap.docs.length === 40);
-    } catch (err) {
-      console.error("Pagination error:", err);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
-  /* ======================
-     RENDER
-  ====================== */
-  return (
-    <>
-      <Head>
-        <title>Author Dashboard</title>
-      </Head>
-
-      <div className={styles.container}>
-        <Net />
-        <Card />
-
-        {/* STATS */}
-        <div className={styles.cards}>
-          <div className={styles.card}>
-            <h3>Total Posts</h3>
-            <p>{totalPosts}</p>
-          </div>
-          <div className={styles.card}>
-            <h3>Total Views</h3>
-            <p>{totalViews}</p>
-          </div>
-        </div>
-
-        {/* SEARCH */}
-        <input
-          className={styles.search}
-          placeholder="Search posts..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        {/* POSTS */}
-        <div className={styles.postsList}>
-          {filteredPosts.map((post) => (
-            <div key={post.id} className={styles.postCard}>
-              {post.image && (
-                <img src={post.image} className={styles.postImage} alt="" />
-              )}
-
-              <h2>{post.head}</h2>
-
-              <p>
-                {stripHTML(post.story).slice(0, 400)}
-                {post.story.length > 400 && "..."}
-              </p>
-
-              <p>
-                <strong>Category:</strong> {post.category}
-              </p>
-
-              <p>
-                <FaEye /> {post.views} &nbsp;&nbsp;
-                <FaComments />{" "}
-                {loadingComments[post.id]
-                  ? "Loading..."
-                  : post.totalComments}
-              </p>
-
-              <div className={styles.actions}>
-                <button onClick={() => handleEdit(post.id)}>
-                  <FaEdit /> Edit
-                </button>
-                <button onClick={() => handleDelete(post.id)}>
-                  <FaTrash /> Delete
-                </button>
-              </div>
-
-              {post.commentsLoaded && post.comments.length > 0 && (
-                <div className={styles.commentsList}>
-                  {post.comments.map((c) => (
-                    <div key={c.id}>
-                      <strong>{c.author}:</strong> {c.text}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* LOAD MORE */}
-        {hasMore && (
-          <button
-            className={styles.loadMoreBtn}
-            onClick={loadMorePosts}
-            disabled={loadingMore}
-          >
-            {loadingMore ? "Loading..." : "Reba izindi"}
-          </button>
-        )}
-      </div>
-    </>
-  );
-}
-
-/* ======================
-   SERVER SIDE
-====================== */
 export async function getServerSideProps(context) {
-  const cookies = cookie.parse(context.req.headers.cookie || "");
-  const username = cookies.username || null;
+  // 🟢 Fata username muri cookies server-side
+  const cookieHeader = context.req.headers.cookie || "";
+  const match = cookieHeader
+    .split("; ")
+    .find((c) => c.startsWith("username="));
 
-  if (!username) {
+  if (!match) {
     return {
       redirect: { destination: "/login", permanent: false },
     };
   }
 
-  const ref = collection(db, "free");
+  const username = decodeURIComponent(match.split("=")[1]);
 
-  const firstQuery = query(
-    ref,
+  // 🟢 Fata first 40 posts
+  const postsRef = collection(db, "free");
+  const q = query(
+    postsRef,
     where("author", "==", username),
     orderBy("createdAt", "desc"),
-    limit(40)
+    limit(POSTS_LIMIT)
   );
 
-  const snap = await getDocs(firstQuery);
+  const snap = await getDocs(q);
 
-  const initialPosts = snap.docs.map((d) => {
-    const data = d.data();
-    return {
-      id: d.id,
-      head: data.head || "",
-      story: data.story || "",
-      category: data.categories || "",
-      image: data.imageUrl || null,
-      views: data.views || 0,
-      comments: [],
-      totalComments: 0,
-      commentsLoaded: false,
-    };
-  });
+  const posts = await Promise.all(
+    snap.docs.map(async (docSnap) => {
+      const data = docSnap.data();
 
-  let totalViews = 0;
-  const allSnap = await getDocs(query(ref, where("author", "==", username)));
-  allSnap.forEach((d) => (totalViews += d.data().views || 0));
+      // Fata comments buri post
+      const commentsRef = collection(db, "free", docSnap.id, "comments");
+      const commentsSnap = await getDocs(
+        query(commentsRef, orderBy("createdAt", "desc"))
+      );
+      const comments = commentsSnap.docs.map((c) => ({
+        id: c.id,
+        ...c.data(),
+      }));
+
+      return {
+        id: docSnap.id,
+        ...data,
+        comments,
+      };
+    })
+  );
+
+  const lastDoc = snap.docs[snap.docs.length - 1] || null;
 
   return {
     props: {
-      initialPosts,
-      totalPosts: allSnap.size,
-      totalViews,
       username,
+      initialPosts: posts,
+      lastDocId: lastDoc ? lastDoc.id : null,
     },
   };
+}
+
+export default function FreemaPage({ username, initialPosts, lastDocId }) {
+  const router = useRouter();
+  const [posts, setPosts] = useState(initialPosts || []);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(initialPosts.length === POSTS_LIMIT);
+  const [lastDoc, setLastDoc] = useState(lastDocId);
+
+  // 🟢 Client-side username (js-cookie)
+  useEffect(() => {
+    const cookieUser = Cookies.get("username");
+    if (!cookieUser) router.push("/login");
+  }, [router]);
+
+  // 🟢 Delete post + comments
+  const handleDelete = async (postId) => {
+    if (!confirm("Are you sure you want to delete this post permanently?")) return;
+
+    try {
+      setLoading(true);
+
+      // Delete comments
+      const commentsRef = collection(db, "free", postId, "comments");
+      const commentsSnap = await getDocs(commentsRef);
+      for (const c of commentsSnap.docs) {
+        await deleteDoc(doc(db, "free", postId, "comments", c.id));
+      }
+
+      // Delete post
+      await deleteDoc(doc(db, "free", postId));
+
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+      setLoading(false);
+      alert("Post deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete post.");
+      setLoading(false);
+    }
+  };
+
+  // 🟢 Load more posts
+  const loadMorePosts = async () => {
+    if (!hasMore || loading) return;
+    setLoading(true);
+
+    try {
+      // Fata username client-side
+      const username = Cookies.get("username");
+      if (!username) {
+        router.push("/login");
+        return;
+      }
+
+      const postsRef = collection(db, "free");
+      let startAfterDoc = null;
+      if (lastDoc) startAfterDoc = doc(db, "free", lastDoc);
+
+      let q = query(
+        postsRef,
+        where("author", "==", username),
+        orderBy("createdAt", "desc"),
+        startAfterDoc || null,
+        limit(POSTS_LIMIT)
+      );
+
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        setHasMore(false);
+        setLoading(false);
+        return;
+      }
+
+      const newPosts = await Promise.all(
+        snap.docs.map(async (docSnap) => {
+          const data = docSnap.data();
+          const commentsRef = collection(db, "free", docSnap.id, "comments");
+          const commentsSnap = await getDocs(
+            query(commentsRef, orderBy("createdAt", "desc"))
+          );
+          const comments = commentsSnap.docs.map((c) => ({ id: c.id, ...c.data() }));
+          return { id: docSnap.id, ...data, comments };
+        })
+      );
+
+      setPosts((prev) => [...prev, ...newPosts]);
+      const last = snap.docs[snap.docs.length - 1];
+      setLastDoc(last ? last.id : null);
+      setHasMore(snap.docs.length === POSTS_LIMIT);
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className={styles.container}>
+      <Head>
+        <title>{username}'s Posts</title>
+      </Head>
+
+      <h1 className={styles.pageTitle}>{username}'s Posts</h1>
+
+      {loading && <p>Processing...</p>}
+      {posts.length === 0 && <p>No posts yet.</p>}
+
+      <div className={styles.postsGrid}>
+        {posts.map((post) => (
+          <div key={post.id} className={styles.postCard}>
+            {post.imageUrl && (
+              <img src={post.imageUrl} alt={post.head} className={styles.postImage} />
+            )}
+
+            <div className={styles.postContent}>
+              <h2 className={styles.postTitle}>{post.head}</h2>
+
+              <div
+                className={styles.storyWrapper}
+                dangerouslySetInnerHTML={{ __html: post.story }}
+              />
+
+              <div className={styles.actions}>
+                <button
+                  className={styles.deleteBtn}
+                  onClick={() => handleDelete(post.id)}
+                >
+                  <FaTrashAlt /> Delete
+                </button>
+              </div>
+
+              <div className={styles.commentsSection}>
+                <h3>
+                  <FaComment /> Comments ({post.comments.length})
+                </h3>
+                {post.comments.length === 0 && <p>No comments yet.</p>}
+                {post.comments.map((c) => (
+                  <div key={c.id} className={styles.commentItem}>
+                    <small>{c.author}</small>
+                    <p>{c.content}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {hasMore && (
+        <button className={styles.loadMoreBtn} onClick={loadMorePosts} disabled={loading}>
+          {loading ? "Loading..." : "Load More"}
+        </button>
+      )}
+    </div>
+  );
 }
