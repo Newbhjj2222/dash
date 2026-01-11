@@ -1,0 +1,86 @@
+.container {
+  padding: 24px;
+  background: #f7f9fc;
+  min-height: 100vh;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.sectionTitle {
+  font-size: 20px;
+  margin: 30px 0 15px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.statCard {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.statCard h3 {
+  font-size: 14px;
+  color: #555;
+}
+
+.statCard p {
+  font-size: 26px;
+  font-weight: bold;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.storyCard {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+.storyCard img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+}
+
+.storyCard h3 {
+  padding: 10px;
+  font-size: 16px;
+}
+
+.storyCard p {
+  padding: 0 10px 10px;
+  font-size: 14px;
+  color: #666;
+}
+
+.list {
+  background: white;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.listItem {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  font-size: 15px;
+}
+
+.listItem:last-child {
+  border-bottom: none;
+}
