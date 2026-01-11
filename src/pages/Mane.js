@@ -1,5 +1,6 @@
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/components/firebase";
+import styles from "@/styles/manager.module.css";
 
 export async function getServerSideProps() {
   const snap = await getDocs(collection(db, "posts"));
@@ -9,102 +10,120 @@ export async function getServerSideProps() {
     posts.push({ id: doc.id, ...doc.data() });
   });
 
-  // 🚫 Kurandura inkuru za Sex 🔞 burundu
-  const cleanPosts = posts.filter(
-    (p) => !p.categories?.includes("Sex 🔞Story")
-  );
+  // 🧠 Fata INKURU nyamukuru (nta Season/Episode)
+  const groupedStories = {};
 
-  // ❌ Inkuru zidakurikiza amategeko (uretse sex)
-  const violations = cleanPosts.filter(
-    (p) =>
-      p.monetizationStatus === "blocked" ||
-      (p.story &&
-        p.story.replace(/<[^>]*>/g, "").length < 300)
-  );
+  posts.forEach((p) => {
+    const baseTitle = p.head?.split("S")[0].trim();
+    if (!groupedStories[baseTitle]) {
+      groupedStories[baseTitle] = {
+        title: baseTitle,
+        totalViews: 0,
+        episodes: [],
+        categories: p.categories || [],
+        imageUrl: p.imageUrl,
+        author: p.author,
+        createdAt: p.createdAt,
+      };
+    }
 
-  // 📢 Inkuru zo gukorera share cyane
-  const shareBoost = cleanPosts
+    groupedStories[baseTitle].episodes.push(p);
+    groupedStories[baseTitle].totalViews += p.views || 0;
+  });
+
+  const stories = Object.values(groupedStories);
+
+  // 🔥 Inkuru zikunzwe (views nyinshi)
+  const popularStories = [...stories]
+    .sort((a, b) => b.totalViews - a.totalViews)
+    .slice(0, 6);
+
+  // 📢 Share suggestions (episodes zihariye)
+  const shareSuggestions = posts
     .filter((p) =>
       p.categories?.some((c) =>
         ["Drama", "Love-Story", "Action"].includes(c)
       )
     )
+    .sort((a, b) => (b.views || 0) - (a.views || 0))
     .slice(0, 6);
 
-  // 🎲 Random posts zo gukorera share
-  const randomPosts = [...cleanPosts]
+  // 🎲 Random inkuru
+  const randomStories = [...stories]
     .sort(() => 0.5 - Math.random())
     .slice(0, 5);
 
-  // 📊 Insights
-  const authors = new Set();
-  let recentPosts = 0;
-  const now = new Date();
-
-  cleanPosts.forEach((p) => {
-    authors.add(p.author);
-    const created = new Date(p.createdAt);
-    if ((now - created) / (1000 * 60 * 60 * 24) <= 7) {
-      recentPosts++;
-    }
-  });
-
   return {
     props: {
-      insights: {
-        totalPosts: cleanPosts.length,
-        authors: authors.size,
-        recentPosts,
+      stats: {
+        totalStories: stories.length,
+        totalEpisodes: posts.length,
       },
-      violations,
-      shareBoost,
-      randomPosts,
+      popularStories,
+      shareSuggestions,
+      randomStories,
     },
   };
 }
 
 export default function ManagerPage({
-  insights,
-  violations,
-  shareBoost,
-  randomPosts,
+  stats,
+  popularStories,
+  shareSuggestions,
+  randomStories,
 }) {
   return (
-    <div style={{ padding: 24 }}>
-      <h1>📊 Manager Dashboard – SSR</h1>
+    <div className={styles.container}>
+      <h1 className={styles.title}>📊 Manager Dashboard</h1>
 
-      <section>
-        <h2>📈 Insights rusange</h2>
-        <p>Inkuru zose (nta 🔞): {insights.totalPosts}</p>
-        <p>Abanditsi: {insights.authors}</p>
-        <p>Inkuru nshya (7 days): {insights.recentPosts}</p>
-      </section>
+      {/* INSIGHTS */}
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <h3>Inkuru zose</h3>
+          <p>{stats.totalStories}</p>
+        </div>
+        <div className={styles.statCard}>
+          <h3>Episodes zose</h3>
+          <p>{stats.totalEpisodes}</p>
+        </div>
+      </div>
 
+      {/* POPULAR */}
       <section>
-        <h2>❌ Inkuru zidakurikiza amategeko</h2>
-        {violations.length === 0 ? (
-          <p>Nta kibazo gihari</p>
-        ) : (
-          violations.map((p) => (
-            <div key={p.id}>
-              ⚠️ <strong>{p.head}</strong> — {p.author}
+        <h2 className={styles.sectionTitle}>🔥 Inkuru zikunzwe cyane</h2>
+        <div className={styles.cardGrid}>
+          {popularStories.map((s) => (
+            <div key={s.title} className={styles.storyCard}>
+              <img src={s.imageUrl} alt="" />
+              <h3>{s.title}</h3>
+              <p>Views: {s.totalViews}</p>
             </div>
-          ))
-        )}
+          ))}
+        </div>
       </section>
 
+      {/* SHARE */}
       <section>
-        <h2>📢 Inkuru zo gukorera share cyane</h2>
-        {shareBoost.map((p) => (
-          <div key={p.id}>🔥 {p.head}</div>
-        ))}
+        <h2 className={styles.sectionTitle}>📢 Inkuru zo gukorera Share</h2>
+        <div className={styles.list}>
+          {shareSuggestions.map((p) => (
+            <div key={p.id} className={styles.listItem}>
+              👉 {p.head}
+            </div>
+          ))}
+        </div>
       </section>
 
+      {/* RANDOM */}
       <section>
-        <h2>🎲 Random posts zo gukorera share</h2>
-        {randomPosts.map((p) => (
-          <div key={p.id}>👉 {p.head}</div>
-        ))}
+        <h2 className={styles.sectionTitle}>🎲 Inkuru za Random</h2>
+        <div className={styles.list}>
+          {randomStories.map((s) => (
+            <div key={s.title} className={styles.listItem}>
+              📘 {s.title}
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );
