@@ -1,3 +1,4 @@
+/* Container ya page yose */
 .container {
   min-height: 100vh;
   background: #0d0d0d;
@@ -5,13 +6,16 @@
   justify-content: center;
   align-items: center;
   color: #fff;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
-/* STEP 1 */
+/* STEP 1: input & textarea */
 .step {
   width: 100%;
   max-width: 700px;
   padding: 20px;
+  box-sizing: border-box;
 }
 
 .input,
@@ -22,17 +26,23 @@
   border-radius: 8px;
   border: none;
   font-size: 16px;
+  box-sizing: border-box;
+  background: #1a1a1a;
+  color: #fff;
 }
 
 .textarea {
   height: 260px;
+  resize: vertical;
 }
 
 .label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
+  font-size: 14px;
 }
 
+/* Button ya NEXT */
 .nextBtn {
   margin-top: 20px;
   width: 100%;
@@ -42,6 +52,12 @@
   background: #1e90ff;
   color: #fff;
   font-size: 16px;
+  cursor: pointer;
+}
+
+.nextBtn:disabled {
+  background: #555;
+  cursor: not-allowed;
 }
 
 /* TELEPROMPTER SCREEN */
@@ -52,9 +68,10 @@
   background: #000;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
-/* Fixed Header */
+/* Header fixed */
 .header {
   position: fixed;
   top: 0;
@@ -64,49 +81,70 @@
   padding: 16px;
   text-align: center;
   font-weight: bold;
+  font-size: 18px;
   z-index: 10;
+  box-sizing: border-box;
+  border-bottom: 1px solid #333;
 }
 
-/* Scroll Body */
+/* Body scrollable */
 .body {
-  margin-top: 70px;
+  margin-top: 70px; /* hejuru y'header */
   padding: 24px;
   overflow-y: auto;
   flex: 1;
+  box-sizing: border-box;
 }
 
+/* Imirongo y'inyandiko */
 .line {
   font-size: 18px;
-  line-height: 1.9;
+  line-height: 1.8;
   margin-bottom: 28px;
+  color: #fff;
 }
 
-/* Controls */
+/* Controls: slider + button */
 .controls {
   background: #111;
   padding: 10px;
   display: flex;
   align-items: center;
   gap: 10px;
+  justify-content: space-between;
+  box-sizing: border-box;
 }
 
+.controls input[type="range"] {
+  flex: 1;
+}
+
+/* Button ya Back */
 .controls button {
   padding: 6px 16px;
   border-radius: 20px;
   border: none;
+  background: #1e90ff;
+  color: #fff;
+  cursor: pointer;
 }
 
-/* Responsive */
+/* Responsive small screens */
 @media (max-width: 480px) {
+  .screen, .header {
+    max-width: 100%;
+  }
+
   .line {
     font-size: 16px;
+    margin-bottom: 22px;
   }
 
-  .screen {
-    max-width: 100%;
+  .nextBtn {
+    font-size: 15px;
   }
 
-  .header {
-    max-width: 100%;
+  .input, .textarea {
+    font-size: 15px;
   }
 }
