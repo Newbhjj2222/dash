@@ -1,0 +1,112 @@
+.container {
+  min-height: 100vh;
+  background: #0d0d0d;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+}
+
+/* STEP 1 */
+.step {
+  width: 100%;
+  max-width: 700px;
+  padding: 20px;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+}
+
+.textarea {
+  height: 260px;
+}
+
+.label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.nextBtn {
+  margin-top: 20px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 30px;
+  border: none;
+  background: #1e90ff;
+  color: #fff;
+  font-size: 16px;
+}
+
+/* TELEPROMPTER SCREEN */
+.screen {
+  width: 100%;
+  max-width: 480px;
+  height: 100vh;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fixed Header */
+.header {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  max-width: 480px;
+  background: #111;
+  padding: 16px;
+  text-align: center;
+  font-weight: bold;
+  z-index: 10;
+}
+
+/* Scroll Body */
+.body {
+  margin-top: 70px;
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.line {
+  font-size: 18px;
+  line-height: 1.9;
+  margin-bottom: 28px;
+}
+
+/* Controls */
+.controls {
+  background: #111;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.controls button {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: none;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .line {
+    font-size: 16px;
+  }
+
+  .screen {
+    max-width: 100%;
+  }
+
+  .header {
+    max-width: 100%;
+  }
+}
