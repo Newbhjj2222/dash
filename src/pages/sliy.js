@@ -51,7 +51,7 @@ export default function Sliy() {
           <input
             type="range"
             min="1"
-            max="50"
+            max="100"
             step="1"
             value={speed}
             onChange={(e) => setSpeed(Number(e.target.value))}
@@ -83,7 +83,7 @@ export default function Sliy() {
             <input
               type="range"
               min="1"
-              max="50"
+              max="100"
               step="1"
               value={speed}
               onChange={(e) => setSpeed(Number(e.target.value))}
