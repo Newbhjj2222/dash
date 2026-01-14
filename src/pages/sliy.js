@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import styles from "./Sliy.module.css";
+import styles from "./sliy.module.css";
 
 export default function Sliy() {
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
-  const [speed, setSpeed] = useState(30); // smaller = faster
+
+  // Speed mu SEGONDA (1s → 1800s = 30min)
+  const [speed, setSpeed] = useState(10);
+
   const bodyRef = useRef(null);
 
   // Auto scroll (teleprompter)
@@ -16,7 +19,7 @@ export default function Sliy() {
       if (bodyRef.current) {
         bodyRef.current.scrollTop += 1;
       }
-    }, speed);
+    }, speed * 1000); // guhindura seconds → milliseconds
 
     return () => clearInterval(interval);
   }, [speed, step]);
@@ -36,18 +39,21 @@ export default function Sliy() {
 
           <textarea
             className={styles.textarea}
-            placeholder="Andika inyandiko ndende (andika paragraphe ku murongo mushya)"
+            placeholder="Andika inyandiko ndende (umurongo ku murongo)"
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
 
           <label className={styles.label}>
-            Speed: {speed} (teleprompter)
+            Speed: {speed} second(s)
+            {speed >= 60 && ` (${Math.floor(speed / 60)} min)`}
           </label>
+
           <input
             type="range"
-            min="10"
-            max="80"
+            min="1"
+            max="1800"
+            step="1"
             value={speed}
             onChange={(e) => setSpeed(Number(e.target.value))}
           />
@@ -77,12 +83,16 @@ export default function Sliy() {
           <div className={styles.controls}>
             <input
               type="range"
-              min="10"
-              max="80"
+              min="1"
+              max="1800"
+              step="1"
               value={speed}
               onChange={(e) => setSpeed(Number(e.target.value))}
             />
-            <span>{speed}</span>
+            <span>
+              {speed}s
+              {speed >= 60 && ` (${Math.floor(speed / 60)}m)`}
+            </span>
             <button onClick={() => setStep(1)}>Back</button>
           </div>
         </div>
