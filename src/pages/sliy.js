@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import styles from "./sliy.module.css";
+import styles from "./Sliy.module.css";
 
 export default function Sliy() {
   const [step, setStep] = useState(1);
