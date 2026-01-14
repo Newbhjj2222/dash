@@ -6,12 +6,12 @@ export default function Sliy() {
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
 
-  // Speed mu SEGONDA (1s → 1800s = 30min)
+  // Speed mu milliseconds (min=1ms, max=50ms)
   const [speed, setSpeed] = useState(10);
 
   const bodyRef = useRef(null);
 
-  // Auto scroll (teleprompter)
+  // Auto scroll teleprompter
   useEffect(() => {
     if (step !== 2) return;
 
@@ -19,7 +19,7 @@ export default function Sliy() {
       if (bodyRef.current) {
         bodyRef.current.scrollTop += 1;
       }
-    }, speed * 1000); // guhindura seconds → milliseconds
+    }, speed); // Nyuma yo gushyira speed muri ms, nta *1000 ikenewe
 
     return () => clearInterval(interval);
   }, [speed, step]);
@@ -45,14 +45,13 @@ export default function Sliy() {
           />
 
           <label className={styles.label}>
-            Speed: {speed} second(s)
-            {speed >= 60 && ` (${Math.floor(speed / 60)} min)`}
+            Speed: {speed} ms
           </label>
 
           <input
             type="range"
             min="1"
-            max="1800"
+            max="50"
             step="1"
             value={speed}
             onChange={(e) => setSpeed(Number(e.target.value))}
@@ -84,15 +83,12 @@ export default function Sliy() {
             <input
               type="range"
               min="1"
-              max="1800"
+              max="50"
               step="1"
               value={speed}
               onChange={(e) => setSpeed(Number(e.target.value))}
             />
-            <span>
-              {speed}s
-              {speed >= 60 && ` (${Math.floor(speed / 60)}m)`}
-            </span>
+            <span>{speed} ms</span>
             <button onClick={() => setStep(1)}>Back</button>
           </div>
         </div>
